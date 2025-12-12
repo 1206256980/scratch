@@ -85,6 +85,12 @@ function App() {
                     subValue={stats?.high24h !== undefined ? `高: ${formatPercent(stats.high24h)} / 低: ${formatPercent(stats.low24h)}` : ''}
                 />
                 <StatsCard
+                    label="📆 3天变化"
+                    value={formatPercent(stats?.change3d)}
+                    valueClass={getValueClass(stats?.change3d)}
+                    subValue={`${stats?.dataPoints3d || 0} 个数据点`}
+                />
+                <StatsCard
                     label="📅 7天变化"
                     value={formatPercent(stats?.change7d)}
                     valueClass={getValueClass(stats?.change7d)}

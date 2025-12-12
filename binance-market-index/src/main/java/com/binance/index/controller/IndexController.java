@@ -68,6 +68,7 @@ public class IndexController {
     public ResponseEntity<Map<String, Object>> getStats() {
         MarketIndex latest = indexCalculatorService.getLatestIndex();
         List<MarketIndex> last24h = indexCalculatorService.getHistoryData(24);
+        List<MarketIndex> last72h = indexCalculatorService.getHistoryData(72);
         List<MarketIndex> last168h = indexCalculatorService.getHistoryData(168);
 
         Map<String, Object> response = new HashMap<>();
@@ -99,6 +100,13 @@ public class IndexController {
             stats.put("low24h", min24h);
         }
 
+        // 3天变化
+        if (!last72h.isEmpty() && last72h.size() > 1) {
+            double first = last72h.get(0).getIndexValue();
+            double last = last72h.get(last72h.size() - 1).getIndexValue();
+            stats.put("change3d", last - first);
+        }
+
         // 7天变化
         if (!last168h.isEmpty() && last168h.size() > 1) {
             double first = last168h.get(0).getIndexValue();
@@ -108,6 +116,7 @@ public class IndexController {
 
         // 数据点数量
         stats.put("dataPoints24h", last24h.size());
+        stats.put("dataPoints3d", last72h.size());
         stats.put("dataPoints7d", last168h.size());
 
         response.put("stats", stats);
