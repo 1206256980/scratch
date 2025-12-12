@@ -6,8 +6,8 @@
 
 - 📊 实时市场指数折线图
 - ⏰ 每5分钟自动采集数据
-- 📅 支持查看6小时/12小时/1天/3天历史走势
-- 🚀 启动时自动回补3天历史数据
+- 📅 支持查看6小时/12小时/1天/3天/7天历史走势
+- 🚀 启动时自动回补7天历史数据
 - 🎨 现代暗色主题界面
 
 ## 快速开始
@@ -67,7 +67,7 @@ npm run dev
 index.collect.interval-minutes=5
 
 # 历史回补天数
-index.backfill.days=3
+index.backfill.days=7
 
 # 排除的币种
 index.exclude-symbols=BTCUSDT,ETHUSDT
@@ -81,7 +81,7 @@ index.exclude-symbols=BTCUSDT,ETHUSDT
 docker run -v binance-index-data:/app/data ...
 ```
 
-即使不挂载，每次启动也会自动回补3天历史数据。
+即使不挂载，每次启动也会自动回补7天历史数据。
 
 ## API 接口
 

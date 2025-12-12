@@ -9,7 +9,7 @@ function App() {
     const [stats, setStats] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
-    const [timeRange, setTimeRange] = useState(72) // 默认3天
+    const [timeRange, setTimeRange] = useState(168) // 默认7天
     const [autoRefresh, setAutoRefresh] = useState(true)
 
     const fetchData = useCallback(async () => {
@@ -85,10 +85,10 @@ function App() {
                     subValue={stats?.high24h !== undefined ? `高: ${formatPercent(stats.high24h)} / 低: ${formatPercent(stats.low24h)}` : ''}
                 />
                 <StatsCard
-                    label="📅 3天变化"
-                    value={formatPercent(stats?.change3d)}
-                    valueClass={getValueClass(stats?.change3d)}
-                    subValue={`${stats?.dataPoints3d || 0} 个数据点`}
+                    label="📅 7天变化"
+                    value={formatPercent(stats?.change7d)}
+                    valueClass={getValueClass(stats?.change7d)}
+                    subValue={`${stats?.dataPoints7d || 0} 个数据点`}
                 />
                 <StatsCard
                     label="🪙 参与币种"

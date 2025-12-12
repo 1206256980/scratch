@@ -31,7 +31,7 @@ public class DataCollectorScheduler {
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
         log.info("应用启动完成，开始回补历史数据...");
-        
+
         // 异步执行回补，不阻塞应用启动
         new Thread(() -> {
             try {
@@ -64,5 +64,5 @@ public class DataCollectorScheduler {
     }
 
     // 基准价格永不自动刷新，仅在首次启动时通过回补历史数据设定
-    // 如需更改回补天数，修改配置 index.backfill.days (默认3天)
+    // 如需更改回补天数，修改配置 index.backfill.days (默认7天)
 }

@@ -22,19 +22,19 @@ public class IndexCalculatorService {
     private final BinanceApiService binanceApiService;
     private final MarketIndexRepository marketIndexRepository;
 
-    // 缓存各币种的基准价格（3天前的价格）
+    // 缓存各币种的基准价格（回补起始时间的价格）
     private Map<String, Double> basePrices = new HashMap<>();
     private LocalDateTime basePriceTime;
 
-    public IndexCalculatorService(BinanceApiService binanceApiService, 
-                                   MarketIndexRepository marketIndexRepository) {
+    public IndexCalculatorService(BinanceApiService binanceApiService,
+            MarketIndexRepository marketIndexRepository) {
         this.binanceApiService = binanceApiService;
         this.marketIndexRepository = marketIndexRepository;
     }
 
     /**
      * 计算并保存当前时刻的市场指数（实时采集用）
-     * 使用3天前的固定基准价格计算涨跌幅
+     * 使用回补起始时间的固定基准价格计算涨跌幅
      */
     public MarketIndex calculateAndSaveCurrentIndex() {
         // 如果没有基准价格，需要先刷新
@@ -49,7 +49,7 @@ public class IndexCalculatorService {
             return null;
         }
 
-        // 简单平均：使用3天前的基准价格计算涨跌幅
+        // 简单平均：使用回补起始时间的基准价格计算涨跌幅
         double totalChange = 0;
         double totalVolume = 0;
         int validCount = 0;
@@ -57,13 +57,13 @@ public class IndexCalculatorService {
         for (TickerData ticker : tickers) {
             String symbol = ticker.getSymbol();
             Double basePrice = basePrices.get(symbol);
-            
+
             // 没有基准价格的币种跳过
             if (basePrice == null || basePrice <= 0) {
                 continue;
             }
 
-            // 计算相对于3天前基准的涨跌幅
+            // 计算相对于基准时间的涨跌幅
             double changePercent = (ticker.getLastPrice() - basePrice) / basePrice * 100;
             double volume = ticker.getQuoteVolume();
 
@@ -103,7 +103,7 @@ public class IndexCalculatorService {
     }
 
     /**
-     * 刷新基准价格（获取每个币种3天前的价格）
+     * 刷新基准价格（获取每个币种回补起始时间的价格）
      */
     public void refreshBasePrices() {
         log.info("刷新基准价格...");
@@ -111,15 +111,15 @@ public class IndexCalculatorService {
 
         List<String> symbols = binanceApiService.getAllUsdtSymbols();
         long now = System.currentTimeMillis();
-        long threeDaysAgo = now - 3L * 24 * 60 * 60 * 1000;
+        long backfillStartTime = now - 7L * 24 * 60 * 60 * 1000; // 7天前
 
         int count = 0;
         for (String symbol : symbols) {
             try {
-                // 只获取3天前那个时间点附近的1根K线
+                // 只获取回补起始时间点附近的1根K线
                 List<KlineData> klines = binanceApiService.getKlines(
-                        symbol, "5m", threeDaysAgo, threeDaysAgo + 300000, 1);
-                
+                        symbol, "5m", backfillStartTime, backfillStartTime + 300000, 1);
+
                 if (!klines.isEmpty()) {
                     basePrices.put(symbol, klines.get(0).getClosePrice());
                     count++;
@@ -138,6 +138,7 @@ public class IndexCalculatorService {
 
     /**
      * 回补历史数据
+     * 
      * @param days 回补天数
      */
     public void backfillHistoricalData(int days) {
@@ -176,7 +177,7 @@ public class IndexCalculatorService {
                 failedCount++;
                 log.error("获取K线失败 {}: {} - {}", symbol, e.getClass().getSimpleName(), e.getMessage());
                 log.debug("详细错误堆栈：", e);
-                
+
                 // 如果连续失败多次，可能是被限流，等待更长时间
                 if (failedCount % 10 == 0) {
                     log.warn("连续失败 {} 次，等待5秒后继续...", failedCount);
@@ -189,21 +190,21 @@ public class IndexCalculatorService {
                 }
             }
         }
-        
-        log.info("K线数据获取完成，成功：{}，失败：{}，共 {} 个时间点", 
+
+        log.info("K线数据获取完成，成功：{}，失败：{}，共 {} 个时间点",
                 processedCount, failedCount, timeSeriesData.size());
 
         // 计算每个时间点的指数
         // 需要先确定基准价格（最早时间点的价格）
         Map<String, Double> historicalBasePrices = new HashMap<>();
         Long firstTimestamp = timeSeriesData.keySet().stream().findFirst().orElse(null);
-        
+
         if (firstTimestamp != null) {
             Map<String, KlineData> firstData = timeSeriesData.get(firstTimestamp);
             for (Map.Entry<String, KlineData> entry : firstData.entrySet()) {
                 historicalBasePrices.put(entry.getKey(), entry.getValue().getOpenPrice());
             }
-            
+
             // 更新全局基准价格
             basePrices = new HashMap<>(historicalBasePrices);
             basePriceTime = LocalDateTime.now();
@@ -211,7 +212,7 @@ public class IndexCalculatorService {
 
         // 计算每个时间点的指数
         List<MarketIndex> indexList = new ArrayList<>();
-        
+
         for (Map.Entry<Long, Map<String, KlineData>> entry : timeSeriesData.entrySet()) {
             LocalDateTime timestamp = LocalDateTime.ofInstant(
                     java.time.Instant.ofEpochMilli(entry.getKey()),
@@ -223,7 +224,7 @@ public class IndexCalculatorService {
             }
 
             Map<String, KlineData> symbolData = entry.getValue();
-            
+
             double totalChange = 0;
             double totalVolume = 0;
             int validCount = 0;
