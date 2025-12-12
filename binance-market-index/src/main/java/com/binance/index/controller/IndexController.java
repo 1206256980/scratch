@@ -78,7 +78,11 @@ public class IndexController {
         if (latest != null) {
             stats.put("current", latest.getIndexValue());
             stats.put("coinCount", latest.getCoinCount());
-            stats.put("lastUpdate", latest.getTimestamp());
+            // 返回毫秒时间戳，前端可以直接用 new Date() 解析
+            stats.put("lastUpdate", latest.getTimestamp()
+                    .atZone(java.time.ZoneOffset.UTC)
+                    .toInstant()
+                    .toEpochMilli());
         }
         
         // 24小时变化

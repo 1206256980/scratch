@@ -70,11 +70,6 @@ function App() {
 
     return (
         <div className="app">
-            <header className="header">
-                <h1>📊 币安 U本位市场指数</h1>
-                <p>实时监控山寨币整体市场走势（不含BTC、ETH）</p>
-            </header>
-
             {/* 统计卡片 */}
             <div className="stats-container">
                 <StatsCard
