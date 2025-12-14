@@ -19,10 +19,6 @@ function CombinedChart({ data }) {
         .filter(item => item.timestamp && item.downCount !== null)
         .map(item => [item.timestamp, item.downCount || 0])
 
-    const adrData = data
-        .filter(item => item.timestamp && item.adr !== null)
-        .map(item => [item.timestamp, item.adr || 1])
-
     // 处理成交额数据 - 转换为亿
     const volumeData = data
         .filter(item => item.timestamp && item.totalVolume !== null && item.totalVolume !== undefined)
@@ -68,12 +64,6 @@ function CombinedChart({ data }) {
                             <span style="color: #94a3b8; margin-right: 8px;">下跌:</span>
                             <span style="color: #ef4444; font-weight: 600;">${param.data[1]}</span>
                         </div>`
-                    } else if (param.seriesName === '涨跌比') {
-                        html += `<div style="display: flex; align-items: center; margin: 4px 0;">
-                            <span style="display: inline-block; width: 10px; height: 10px; background: #64748b; border-radius: 50%; margin-right: 8px;"></span>
-                            <span style="color: #94a3b8; margin-right: 8px;">涨跌比:</span>
-                            <span style="color: #f1f5f9; font-weight: 600;">${param.data[1].toFixed(2)}</span>
-                        </div>`
                     } else if (param.seriesName === '成交额') {
                         const value = param.data[1].toFixed(2)
                         html += `<div style="display: flex; align-items: center; margin: 4px 0;">
@@ -94,22 +84,22 @@ function CombinedChart({ data }) {
         grid: [
             {
                 left: '3%',
-                right: '6%',
-                top: '3%',
-                height: '35%',
+                right: '4%',
+                top: '2%',
+                height: '32%',
                 containLabel: true
             },
             {
                 left: '3%',
-                right: '6%',
-                top: '42%',
-                height: '20%',
+                right: '4%',
+                top: '40%',
+                height: '18%',
                 containLabel: true
             },
             {
                 left: '3%',
-                right: '6%',
-                top: '66%',
+                right: '4%',
+                top: '64%',
                 height: '18%',
                 containLabel: true
             }
@@ -163,20 +153,11 @@ function CombinedChart({ data }) {
             {
                 type: 'value',
                 gridIndex: 1,
-                name: '涨/跌数',
+                name: '数量',
                 nameTextStyle: { color: '#64748b' },
                 axisLine: { show: false },
                 axisLabel: { color: '#64748b' },
                 splitLine: { lineStyle: { color: 'rgba(100, 116, 139, 0.1)' } }
-            },
-            {
-                type: 'value',
-                gridIndex: 1,
-                name: '比率',
-                nameTextStyle: { color: '#64748b' },
-                axisLine: { show: false },
-                axisLabel: { color: '#64748b' },
-                splitLine: { show: false }
             },
             {
                 type: 'value',
@@ -257,26 +238,10 @@ function CombinedChart({ data }) {
                 data: downData
             },
             {
-                name: '涨跌比',
-                type: 'line',
-                xAxisIndex: 1,
-                yAxisIndex: 2,
-                smooth: true,
-                showSymbol: false,
-                lineStyle: { width: 1, color: '#64748b', type: 'dashed' },
-                data: adrData,
-                markLine: {
-                    silent: true,
-                    symbol: 'none',
-                    lineStyle: { color: '#64748b', type: 'dotted', width: 1 },
-                    data: [{ yAxis: 1, label: { show: true, formatter: '1.0', color: '#64748b', position: 'end' } }]
-                }
-            },
-            {
                 name: '成交额',
                 type: 'line',
                 xAxisIndex: 2,
-                yAxisIndex: 3,
+                yAxisIndex: 2,
                 smooth: true,
                 symbol: 'none',
                 lineStyle: { width: 2, color: '#f59e0b' },
