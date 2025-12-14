@@ -149,6 +149,9 @@ public class IndexController {
                 index.getTimestamp(),
                 index.getIndexValue(),
                 index.getTotalVolume(),
-                index.getCoinCount());
+                index.getCoinCount(),
+                index.getUpCount(),
+                index.getDownCount(),
+                index.getAdr());
     }
 }

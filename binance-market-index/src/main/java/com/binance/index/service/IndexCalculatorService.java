@@ -87,6 +87,8 @@ public class IndexCalculatorService {
         double totalChange = 0;
         double totalVolume = 0;
         int validCount = 0;
+        int upCount = 0; // 上涨币种数
+        int downCount = 0; // 下跌币种数
 
         for (KlineData kline : allKlines) {
             String symbol = kline.getSymbol();
@@ -110,6 +112,13 @@ public class IndexCalculatorService {
                 continue;
             }
 
+            // 统计涨跌数量
+            if (changePercent > 0) {
+                upCount++;
+            } else if (changePercent < 0) {
+                downCount++;
+            }
+
             totalChange += changePercent;
             totalVolume += volume;
             validCount++;
@@ -123,18 +132,21 @@ public class IndexCalculatorService {
         // 简单平均
         double indexValue = totalChange / validCount;
 
+        // 计算涨跌比率
+        double adr = downCount > 0 ? (double) upCount / downCount : upCount;
+
         // 再次检查是否已存在该时间点的数据（双重检查）
         if (marketIndexRepository.existsByTimestamp(alignedTime)) {
             log.debug("时间点 {} 已存在数据（并发写入），跳过", alignedTime);
             return null;
         }
 
-        MarketIndex index = new MarketIndex(alignedTime, indexValue, totalVolume, validCount);
+        MarketIndex index = new MarketIndex(alignedTime, indexValue, totalVolume, validCount, upCount, downCount, adr);
         marketIndexRepository.save(index);
 
-        log.info("保存指数: 时间={}, 值={}%, 成交额={}, 币种数={}",
+        log.info("保存指数: 时间={}, 值={}%, 涨/跌={}/{}, ADR={}, 币种数={}",
                 alignedTime, String.format("%.4f", indexValue),
-                String.format("%.2f", totalVolume), validCount);
+                upCount, downCount, String.format("%.2f", adr), validCount);
         return index;
     }
 
@@ -270,6 +282,8 @@ public class IndexCalculatorService {
             double totalChange = 0;
             double totalVolume = 0;
             int validCount = 0;
+            int upCount = 0;
+            int downCount = 0;
 
             for (Map.Entry<String, KlineData> klineEntry : symbolData.entrySet()) {
                 String symbol = klineEntry.getKey();
@@ -288,6 +302,13 @@ public class IndexCalculatorService {
                     continue;
                 }
 
+                // 统计涨跌数量
+                if (changePercent > 0) {
+                    upCount++;
+                } else if (changePercent < 0) {
+                    downCount++;
+                }
+
                 totalChange += changePercent;
                 totalVolume += volume;
                 validCount++;
@@ -296,7 +317,8 @@ public class IndexCalculatorService {
             if (validCount > 0) {
                 // 简单平均
                 double indexValue = totalChange / validCount;
-                indexList.add(new MarketIndex(timestamp, indexValue, totalVolume, validCount));
+                double adr = downCount > 0 ? (double) upCount / downCount : upCount;
+                indexList.add(new MarketIndex(timestamp, indexValue, totalVolume, validCount, upCount, downCount, adr));
             }
         }
 

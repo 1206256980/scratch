@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "market_index", indexes = {
-    @Index(name = "idx_timestamp", columnList = "timestamp")
+        @Index(name = "idx_timestamp", columnList = "timestamp")
 })
 public class MarketIndex {
 
@@ -25,13 +25,34 @@ public class MarketIndex {
     @Column
     private Integer coinCount; // 参与计算的币种数
 
-    public MarketIndex() {}
+    @Column
+    private Integer upCount; // 上涨币种数
+
+    @Column
+    private Integer downCount; // 下跌币种数
+
+    @Column
+    private Double adr; // 涨跌比率 (Advance Decline Ratio)
+
+    public MarketIndex() {
+    }
 
     public MarketIndex(LocalDateTime timestamp, Double indexValue, Double totalVolume, Integer coinCount) {
         this.timestamp = timestamp;
         this.indexValue = indexValue;
         this.totalVolume = totalVolume;
         this.coinCount = coinCount;
+    }
+
+    public MarketIndex(LocalDateTime timestamp, Double indexValue, Double totalVolume,
+            Integer coinCount, Integer upCount, Integer downCount, Double adr) {
+        this.timestamp = timestamp;
+        this.indexValue = indexValue;
+        this.totalVolume = totalVolume;
+        this.coinCount = coinCount;
+        this.upCount = upCount;
+        this.downCount = downCount;
+        this.adr = adr;
     }
 
     // Getters and Setters
@@ -73,5 +94,29 @@ public class MarketIndex {
 
     public void setCoinCount(Integer coinCount) {
         this.coinCount = coinCount;
+    }
+
+    public Integer getUpCount() {
+        return upCount;
+    }
+
+    public void setUpCount(Integer upCount) {
+        this.upCount = upCount;
+    }
+
+    public Integer getDownCount() {
+        return downCount;
+    }
+
+    public void setDownCount(Integer downCount) {
+        this.downCount = downCount;
+    }
+
+    public Double getAdr() {
+        return adr;
+    }
+
+    public void setAdr(Double adr) {
+        this.adr = adr;
     }
 }
