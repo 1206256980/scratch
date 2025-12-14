@@ -86,21 +86,21 @@ function CombinedChart({ data }) {
                 left: '3%',
                 right: '4%',
                 top: '2%',
-                height: '32%',
+                height: '28%',
                 containLabel: true
             },
             {
                 left: '3%',
                 right: '4%',
-                top: '40%',
-                height: '18%',
+                top: '38%',
+                height: '15%',
                 containLabel: true
             },
             {
                 left: '3%',
                 right: '4%',
-                top: '64%',
-                height: '18%',
+                top: '61%',
+                height: '20%',
                 containLabel: true
             }
         ],
@@ -116,7 +116,7 @@ function CombinedChart({ data }) {
             {
                 type: 'time',
                 gridIndex: 1,
-                axisLine: { lineStyle: { color: 'rgba(100, 116, 139, 0.2)' } },
+                axisLine: { lineStyle: { color: 'rgba(245, 158, 11, 0.2)' } },
                 axisLabel: { show: false },
                 splitLine: { show: false },
                 axisPointer: { show: true }
@@ -124,7 +124,7 @@ function CombinedChart({ data }) {
             {
                 type: 'time',
                 gridIndex: 2,
-                axisLine: { lineStyle: { color: 'rgba(245, 158, 11, 0.2)' } },
+                axisLine: { lineStyle: { color: 'rgba(100, 116, 139, 0.2)' } },
                 axisLabel: {
                     color: '#64748b',
                     formatter: function (value) {
@@ -153,20 +153,20 @@ function CombinedChart({ data }) {
             {
                 type: 'value',
                 gridIndex: 1,
-                name: '数量',
-                nameTextStyle: { color: '#64748b' },
-                axisLine: { show: false },
-                axisLabel: { color: '#64748b' },
-                splitLine: { lineStyle: { color: 'rgba(100, 116, 139, 0.1)' } }
-            },
-            {
-                type: 'value',
-                gridIndex: 2,
                 name: '成交额 (亿)',
                 nameTextStyle: { color: '#64748b' },
                 axisLine: { show: false },
                 axisLabel: { color: '#64748b' },
                 splitLine: { lineStyle: { color: 'rgba(245, 158, 11, 0.1)' } }
+            },
+            {
+                type: 'value',
+                gridIndex: 2,
+                name: '涨/跌数',
+                nameTextStyle: { color: '#64748b' },
+                axisLine: { show: false },
+                axisLabel: { color: '#64748b' },
+                splitLine: { lineStyle: { color: 'rgba(100, 116, 139, 0.1)' } }
             }
         ],
         dataZoom: [
@@ -218,30 +218,10 @@ function CombinedChart({ data }) {
                 }
             },
             {
-                name: '上涨',
-                type: 'line',
-                xAxisIndex: 1,
-                yAxisIndex: 1,
-                smooth: true,
-                showSymbol: false,
-                lineStyle: { width: 2, color: '#10b981' },
-                data: upData
-            },
-            {
-                name: '下跌',
-                type: 'line',
-                xAxisIndex: 1,
-                yAxisIndex: 1,
-                smooth: true,
-                showSymbol: false,
-                lineStyle: { width: 2, color: '#ef4444' },
-                data: downData
-            },
-            {
                 name: '成交额',
                 type: 'line',
-                xAxisIndex: 2,
-                yAxisIndex: 2,
+                xAxisIndex: 1,
+                yAxisIndex: 1,
                 smooth: true,
                 symbol: 'none',
                 lineStyle: { width: 2, color: '#f59e0b' },
@@ -256,6 +236,26 @@ function CombinedChart({ data }) {
                     }
                 },
                 data: volumeData
+            },
+            {
+                name: '上涨',
+                type: 'line',
+                xAxisIndex: 2,
+                yAxisIndex: 2,
+                smooth: true,
+                showSymbol: false,
+                lineStyle: { width: 2, color: '#10b981' },
+                data: upData
+            },
+            {
+                name: '下跌',
+                type: 'line',
+                xAxisIndex: 2,
+                yAxisIndex: 2,
+                smooth: true,
+                showSymbol: false,
+                lineStyle: { width: 2, color: '#ef4444' },
+                data: downData
             }
         ]
     }
