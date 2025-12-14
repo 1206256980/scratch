@@ -58,9 +58,13 @@ public class IndexCalculatorService {
             String symbol = ticker.getSymbol();
             Double basePrice = basePrices.get(symbol);
 
-            // 没有基准价格的币种跳过
+            // 新币处理：如果没有基准价格，使用当前价格作为基准
             if (basePrice == null || basePrice <= 0) {
-                continue;
+                if (ticker.getLastPrice() > 0) {
+                    basePrices.put(symbol, ticker.getLastPrice());
+                    log.info("新币种 {} 设置基准价格: {}", symbol, ticker.getLastPrice());
+                }
+                continue; // 第一次采集时跳过计算，下次开始参与
             }
 
             // 计算相对于基准时间的涨跌幅
