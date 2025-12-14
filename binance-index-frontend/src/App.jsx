@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import IndexChart from './components/IndexChart'
+import VolumeChart from './components/VolumeChart'
 import StatsCard from './components/StatsCard'
 import TimeRangeSelector from './components/TimeRangeSelector'
 
@@ -163,6 +164,17 @@ function App() {
                     </div>
                 ) : (
                     <IndexChart data={historyData} />
+                )}
+            </div>
+
+            {/* 成交额图表区域 */}
+            <div className="chart-container" style={{ marginTop: '1rem' }}>
+                <div className="chart-title">
+                    💰 成交额走势
+                </div>
+
+                {historyData.length > 0 && (
+                    <VolumeChart data={historyData} />
                 )}
             </div>
 
