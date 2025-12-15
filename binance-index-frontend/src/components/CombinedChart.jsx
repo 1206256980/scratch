@@ -92,15 +92,15 @@ function CombinedChart({ data }) {
             {
                 left: '3%',
                 right: '4%',
-                top: '46%',
+                top: '42%',
                 height: '16%',
                 containLabel: true
             },
             {
                 left: '3%',
                 right: '4%',
-                top: '70%',
-                height: '18%',
+                top: '68%',
+                height: '20%',
                 containLabel: true
             }
         ],
