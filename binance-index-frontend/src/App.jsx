@@ -168,7 +168,7 @@ function App() {
             </div>
 
             {/* 涨幅分布模块 */}
-            <DistributionModule historyData={historyData} />
+            <DistributionModule />
 
             <footer className="footer">
                 <p>数据来源: 币安合约API | 每5分钟采集一次 | {stats?.coinCount || 0} 个币种参与计算</p>
