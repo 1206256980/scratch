@@ -4,9 +4,10 @@ import ReactECharts from 'echarts-for-react'
 
 // 时间选项配置
 const TIME_OPTIONS = [
-    { label: '15分钟', value: 0.25 },
+    { label: '30分钟', value: 0.5 },
     { label: '1小时', value: 1 },
     { label: '2小时', value: 2 },
+    { label: '4小时', value: 4 },
     { label: '6小时', value: 6 },
     { label: '12小时', value: 12 },
     { label: '1天', value: 24 },
@@ -15,7 +16,7 @@ const TIME_OPTIONS = [
 ]
 
 function DistributionModule() {
-    const [timeBase, setTimeBase] = useState(168) // 默认7天
+    const [timeBase, setTimeBase] = useState(24) // 默认24小时
     const [distributionData, setDistributionData] = useState(null)
     const [loading, setLoading] = useState(false)
     const [selectedBucket, setSelectedBucket] = useState(null) // 选中的区间
