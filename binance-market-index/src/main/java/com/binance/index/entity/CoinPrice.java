@@ -9,8 +9,8 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "coin_price", indexes = {
-        @Index(name = "idx_symbol_timestamp", columnList = "symbol, timestamp"),
-        @Index(name = "idx_timestamp", columnList = "timestamp")
+        @Index(name = "idx_coin_price_symbol_ts", columnList = "symbol, timestamp"),
+        @Index(name = "idx_coin_price_timestamp", columnList = "timestamp")
 })
 public class CoinPrice {
 
