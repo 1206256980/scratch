@@ -85,21 +85,21 @@ function CombinedChart({ data }) {
             {
                 left: '3%',
                 right: '4%',
-                top: '3%',
-                height: '26%',
+                top: '8%',
+                height: '28%',
                 containLabel: true
             },
             {
                 left: '3%',
                 right: '4%',
-                top: '34%',
-                height: '14%',
+                top: '42%',
+                height: '16%',
                 containLabel: true
             },
             {
                 left: '3%',
                 right: '4%',
-                top: '54%',
+                top: '64%',
                 height: '18%',
                 containLabel: true
             }
@@ -181,8 +181,8 @@ function CombinedChart({ data }) {
                 xAxisIndex: [0, 1, 2],
                 start: 0,
                 end: 100,
-                height: 40,
-                bottom: 25,
+                height: 30,
+                bottom: 10,
                 borderColor: 'rgba(99, 102, 241, 0.2)',
                 backgroundColor: 'rgba(22, 27, 34, 0.8)',
                 fillerColor: 'rgba(99, 102, 241, 0.2)',
