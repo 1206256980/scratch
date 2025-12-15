@@ -437,20 +437,58 @@ public class IndexCalculatorService {
         Map<String, Double> basePriceMap = basePriceList.stream()
                 .collect(Collectors.toMap(CoinPrice::getSymbol, CoinPrice::getPrice, (a, b) -> a));
 
-        log.info("从数据库获取价格: 当前={} 个, 基准={} 个", currentPriceMap.size(), basePriceMap.size());
+        // 获取时间区间内的最高/最低价格
+        LocalDateTime latestTime = latestPrices.get(0).getTimestamp();
+        List<Object[]> maxPricesResult = coinPriceRepository.findMaxPricesBySymbolInRange(baseTime, latestTime);
+        List<Object[]> minPricesResult = coinPriceRepository.findMinPricesBySymbolInRange(baseTime, latestTime);
 
-        // 计算涨跌幅
+        Map<String, Double> maxPriceMap = maxPricesResult.stream()
+                .collect(Collectors.toMap(
+                        row -> (String) row[0],
+                        row -> (Double) row[1],
+                        (a, b) -> a));
+        Map<String, Double> minPriceMap = minPricesResult.stream()
+                .collect(Collectors.toMap(
+                        row -> (String) row[0],
+                        row -> (Double) row[1],
+                        (a, b) -> a));
+
+        log.info("从数据库获取价格: 当前={} 个, 基准={} 个, 最高={} 个, 最低={} 个",
+                currentPriceMap.size(), basePriceMap.size(), maxPriceMap.size(), minPriceMap.size());
+
+        // 计算涨跌幅（当前、最高、最低）
         Map<String, Double> changeMap = new HashMap<>();
+        Map<String, Double> maxChangeMap = new HashMap<>();
+        Map<String, Double> minChangeMap = new HashMap<>();
+
         for (Map.Entry<String, Double> entry : currentPriceMap.entrySet()) {
             String symbol = entry.getKey();
             Double currentPrice = entry.getValue();
             Double basePrice = basePriceMap.get(symbol);
+            Double maxPrice = maxPriceMap.get(symbol);
+            Double minPrice = minPriceMap.get(symbol);
 
             if (basePrice != null && basePrice > 0 && currentPrice != null && currentPrice > 0) {
                 double changePercent = (currentPrice - basePrice) / basePrice * 100;
                 // 过滤异常值
                 if (Math.abs(changePercent) <= 200) {
                     changeMap.put(symbol, changePercent);
+
+                    // 计算最高涨跌幅
+                    if (maxPrice != null && maxPrice > 0) {
+                        double maxChangePercent = (maxPrice - basePrice) / basePrice * 100;
+                        if (Math.abs(maxChangePercent) <= 200) {
+                            maxChangeMap.put(symbol, maxChangePercent);
+                        }
+                    }
+
+                    // 计算最低涨跌幅
+                    if (minPrice != null && minPrice > 0) {
+                        double minChangePercent = (minPrice - basePrice) / basePrice * 100;
+                        if (Math.abs(minChangePercent) <= 200) {
+                            minChangeMap.put(symbol, minChangePercent);
+                        }
+                    }
                 }
             }
         }
@@ -537,7 +575,11 @@ public class IndexCalculatorService {
 
             // 构建带涨跌幅的详情列表，并按涨跌幅排序
             List<DistributionBucket.CoinDetail> coinDetails = coins.stream()
-                    .map(symbol -> new DistributionBucket.CoinDetail(symbol, changeMap.getOrDefault(symbol, 0.0)))
+                    .map(symbol -> new DistributionBucket.CoinDetail(
+                            symbol,
+                            changeMap.getOrDefault(symbol, 0.0),
+                            maxChangeMap.getOrDefault(symbol, 0.0),
+                            minChangeMap.getOrDefault(symbol, 0.0)))
                     .sorted((a, b) -> Double.compare(b.getChangePercent(), a.getChangePercent())) // 按涨跌幅降序
                     .collect(Collectors.toList());
 
@@ -547,7 +589,11 @@ public class IndexCalculatorService {
 
         // 构建所有币种排行榜（按涨跌幅降序）
         List<DistributionBucket.CoinDetail> allCoinsRanking = changeMap.entrySet().stream()
-                .map(e -> new DistributionBucket.CoinDetail(e.getKey(), e.getValue()))
+                .map(e -> new DistributionBucket.CoinDetail(
+                        e.getKey(),
+                        e.getValue(),
+                        maxChangeMap.getOrDefault(e.getKey(), 0.0),
+                        minChangeMap.getOrDefault(e.getKey(), 0.0)))
                 .sorted((a, b) -> Double.compare(b.getChangePercent(), a.getChangePercent()))
                 .collect(Collectors.toList());
         data.setAllCoinsRanking(allCoinsRanking);

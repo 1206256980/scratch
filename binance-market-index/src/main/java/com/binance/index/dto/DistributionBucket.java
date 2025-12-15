@@ -17,7 +17,9 @@ public class DistributionBucket {
      */
     public static class CoinDetail {
         private String symbol; // 币种名称
-        private double changePercent; // 涨跌幅
+        private double changePercent; // 当前涨跌幅
+        private double maxChangePercent; // 最高涨跌幅
+        private double minChangePercent; // 最低涨跌幅
 
         public CoinDetail() {
         }
@@ -25,6 +27,13 @@ public class DistributionBucket {
         public CoinDetail(String symbol, double changePercent) {
             this.symbol = symbol;
             this.changePercent = changePercent;
+        }
+
+        public CoinDetail(String symbol, double changePercent, double maxChangePercent, double minChangePercent) {
+            this.symbol = symbol;
+            this.changePercent = changePercent;
+            this.maxChangePercent = maxChangePercent;
+            this.minChangePercent = minChangePercent;
         }
 
         public String getSymbol() {
@@ -41,6 +50,22 @@ public class DistributionBucket {
 
         public void setChangePercent(double changePercent) {
             this.changePercent = changePercent;
+        }
+
+        public double getMaxChangePercent() {
+            return maxChangePercent;
+        }
+
+        public void setMaxChangePercent(double maxChangePercent) {
+            this.maxChangePercent = maxChangePercent;
+        }
+
+        public double getMinChangePercent() {
+            return minChangePercent;
+        }
+
+        public void setMinChangePercent(double minChangePercent) {
+            this.minChangePercent = minChangePercent;
         }
     }
 

@@ -22,6 +22,8 @@ function DistributionModule() {
     const [selectedBucket, setSelectedBucket] = useState(null) // 选中的区间
     const [showAllRanking, setShowAllRanking] = useState(false) // 显示全部排行榜
     const [copiedSymbol, setCopiedSymbol] = useState(null) // 复制提示
+    const [sortType, setSortType] = useState('current') // 排序类型: current, max, min
+    const [sortOrder, setSortOrder] = useState('desc') // 排序方向: asc, desc
     const chartRef = useRef(null)
 
     // 获取分布数据
@@ -213,20 +215,39 @@ function DistributionModule() {
         }
     }
 
+    // 根据排序类型获取排序值
+    const getSortValue = (coin) => {
+        switch (sortType) {
+            case 'max': return coin.maxChangePercent || 0
+            case 'min': return coin.minChangePercent || 0
+            default: return coin.changePercent || 0
+        }
+    }
+
+    // 排序币种列表
+    const sortCoins = (coins) => {
+        if (!coins) return []
+        return [...coins].sort((a, b) => {
+            const valA = getSortValue(a)
+            const valB = getSortValue(b)
+            return sortOrder === 'desc' ? valB - valA : valA - valB
+        })
+    }
+
     // 获取当前要显示的排行数据
     const getRankingData = () => {
         if (showAllRanking && distributionData?.allCoinsRanking) {
             return {
                 title: '全部币种涨跌幅排行',
                 subtitle: `共 ${distributionData.totalCoins} 个币种`,
-                coins: distributionData.allCoinsRanking
+                coins: sortCoins(distributionData.allCoinsRanking)
             }
         }
         if (selectedBucket) {
             return {
                 title: selectedBucket.range,
                 subtitle: `${selectedBucket.count} 个币种`,
-                coins: selectedBucket.coinDetails || []
+                coins: sortCoins(selectedBucket.coinDetails)
             }
         }
         return null
@@ -322,6 +343,36 @@ function DistributionModule() {
                                 </div>
                                 <button className="close-btn" onClick={closePanel}>✕</button>
                             </div>
+                            {/* 排序切换栏 */}
+                            <div className="sort-controls">
+                                <div className="sort-type-group">
+                                    <button
+                                        className={`sort-btn ${sortType === 'current' ? 'active' : ''}`}
+                                        onClick={() => setSortType('current')}
+                                    >
+                                        当前
+                                    </button>
+                                    <button
+                                        className={`sort-btn ${sortType === 'max' ? 'active' : ''}`}
+                                        onClick={() => setSortType('max')}
+                                    >
+                                        最高
+                                    </button>
+                                    <button
+                                        className={`sort-btn ${sortType === 'min' ? 'active' : ''}`}
+                                        onClick={() => setSortType('min')}
+                                    >
+                                        最低
+                                    </button>
+                                </div>
+                                <button
+                                    className="sort-order-btn"
+                                    onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                                    title={sortOrder === 'desc' ? '降序' : '升序'}
+                                >
+                                    {sortOrder === 'desc' ? '↓' : '↑'}
+                                </button>
+                            </div>
                             <div className="ranking-list">
                                 {rankingData.coins.map((coin, index) => (
                                     <div
@@ -332,9 +383,17 @@ function DistributionModule() {
                                     >
                                         <span className="rank">{index + 1}</span>
                                         <span className="symbol">{coin.symbol}</span>
-                                        <span className={`change ${coin.changePercent >= 0 ? 'positive' : 'negative'}`}>
-                                            {coin.changePercent >= 0 ? '+' : ''}{coin.changePercent.toFixed(2)}%
-                                        </span>
+                                        <div className="change-group">
+                                            <span className={`change current ${coin.changePercent >= 0 ? 'positive' : 'negative'}`}>
+                                                {coin.changePercent >= 0 ? '+' : ''}{coin.changePercent.toFixed(2)}%
+                                            </span>
+                                            <span className={`change max ${coin.maxChangePercent >= 0 ? 'positive' : 'negative'}`} title="最高涨幅">
+                                                ↑{coin.maxChangePercent >= 0 ? '+' : ''}{coin.maxChangePercent.toFixed(2)}%
+                                            </span>
+                                            <span className={`change min ${coin.minChangePercent >= 0 ? 'positive' : 'negative'}`} title="最低涨幅">
+                                                ↓{coin.minChangePercent >= 0 ? '+' : ''}{coin.minChangePercent.toFixed(2)}%
+                                            </span>
+                                        </div>
                                         {copiedSymbol === coin.symbol && (
                                             <span className="copied-tip">已复制!</span>
                                         )}

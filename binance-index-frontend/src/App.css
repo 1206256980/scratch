@@ -573,6 +573,65 @@ body {
   color: white;
 }
 
+/* 排序控制栏 */
+.sort-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px var(--spacing-md);
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sort-type-group {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+}
+
+.sort-btn {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sort-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+}
+
+.sort-btn.active {
+  background: var(--accent-gradient);
+  color: white;
+}
+
+.sort-order-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sort-order-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
 .ranking-list {
   flex: 1;
   overflow-y: auto;
@@ -630,9 +689,26 @@ body {
   color: var(--text-primary);
 }
 
+.ranking-item .change-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
 .ranking-item .change {
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+}
+
+.ranking-item .change.current {
+  font-size: 0.9rem;
+}
+
+.ranking-item .change.max,
+.ranking-item .change.min {
+  font-size: 0.7rem;
+  opacity: 0.8;
 }
 
 .ranking-item .change.positive {
