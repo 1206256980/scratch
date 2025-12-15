@@ -405,14 +405,16 @@ public class IndexCalculatorService {
 
     /**
      * 获取涨幅分布数据（从数据库读取，速度快）
-     * @param hours 基准时间（多少小时前）
+     * @param hours 基准时间（多少小时前），支持小数
      * @return 涨幅分布数据
      */
-    public DistributionData getDistribution(int hours) {
+    public DistributionData getDistribution(double hours) {
         log.info("计算涨幅分布，基准时间: {}小时前", hours);
         
         long now = System.currentTimeMillis();
-        LocalDateTime baseTime = LocalDateTime.now().minusHours(hours);
+        // 转换为分钟以支持小数小时
+        long minutes = (long) (hours * 60);
+        LocalDateTime baseTime = LocalDateTime.now().minusMinutes(minutes);
         
         // 从数据库获取最新价格
         List<CoinPrice> latestPrices = coinPriceRepository.findLatestPrices();
@@ -454,17 +456,45 @@ public class IndexCalculatorService {
         
         log.info("涨跌幅计算完成: {} 个币种", changeMap.size());
         
-        // 定义分布区间（每5%）
-        int[] bucketBoundaries = {-50, -45, -40, -35, -30, -25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50};
-        Map<String, List<String>> buckets = new LinkedHashMap<>();
-        
-        // 初始化所有区间
-        buckets.put("<-50%", new ArrayList<>());
-        for (int i = 0; i < bucketBoundaries.length - 1; i++) {
-            String range = String.format("%d%%~%d%%", bucketBoundaries[i], bucketBoundaries[i + 1]);
-            buckets.put(range, new ArrayList<>());
+        if (changeMap.isEmpty()) {
+            log.warn("没有有效的涨跌幅数据");
+            return null;
         }
-        buckets.put(">+50%", new ArrayList<>());
+        
+        // 计算涨跌幅范围
+        double minChange = changeMap.values().stream().mapToDouble(Double::doubleValue).min().orElse(0);
+        double maxChange = changeMap.values().stream().mapToDouble(Double::doubleValue).max().orElse(0);
+        
+        // 根据数据范围动态确定区间大小
+        double range = maxChange - minChange;
+        double bucketSize;
+        if (range <= 2) {
+            bucketSize = 0.2;  // 0.2%区间，适合分钟级
+        } else if (range <= 5) {
+            bucketSize = 0.5;  // 0.5%区间
+        } else if (range <= 20) {
+            bucketSize = 1;    // 1%区间
+        } else if (range <= 50) {
+            bucketSize = 2;    // 2%区间
+        } else {
+            bucketSize = 5;    // 5%区间，适合长期
+        }
+        
+        // 计算区间边界
+        double bucketMin = Math.floor(minChange / bucketSize) * bucketSize;
+        double bucketMax = Math.ceil(maxChange / bucketSize) * bucketSize;
+        
+        // 创建区间
+        Map<String, List<String>> buckets = new LinkedHashMap<>();
+        for (double start = bucketMin; start < bucketMax; start += bucketSize) {
+            String rangeKey;
+            if (bucketSize < 1) {
+                rangeKey = String.format("%.1f%%~%.1f%%", start, start + bucketSize);
+            } else {
+                rangeKey = String.format("%.0f%%~%.0f%%", start, start + bucketSize);
+            }
+            buckets.put(rangeKey, new ArrayList<>());
+        }
         
         // 分配币种到区间
         int upCount = 0;
@@ -477,19 +507,17 @@ public class IndexCalculatorService {
             if (change > 0) upCount++;
             else if (change < 0) downCount++;
             
-            // 找到对应区间
-            if (change < -50) {
-                buckets.get("<-50%").add(symbol);
-            } else if (change >= 50) {
-                buckets.get(">+50%").add(symbol);
+            // 计算所属区间
+            double bucketStart = Math.floor(change / bucketSize) * bucketSize;
+            String rangeKey;
+            if (bucketSize < 1) {
+                rangeKey = String.format("%.1f%%~%.1f%%", bucketStart, bucketStart + bucketSize);
             } else {
-                for (int i = 0; i < bucketBoundaries.length - 1; i++) {
-                    if (change >= bucketBoundaries[i] && change < bucketBoundaries[i + 1]) {
-                        String range = String.format("%d%%~%d%%", bucketBoundaries[i], bucketBoundaries[i + 1]);
-                        buckets.get(range).add(symbol);
-                        break;
-                    }
-                }
+                rangeKey = String.format("%.0f%%~%.0f%%", bucketStart, bucketStart + bucketSize);
+            }
+            
+            if (buckets.containsKey(rangeKey)) {
+                buckets.get(rangeKey).add(symbol);
             }
         }
         
@@ -506,7 +534,7 @@ public class IndexCalculatorService {
         }
         data.setDistribution(distribution);
         
-        log.info("分布统计完成: 上涨={}, 下跌={}", upCount, downCount);
+        log.info("分布统计完成: 上涨={}, 下跌={}, 区间大小={}%", upCount, downCount, bucketSize);
         return data;
     }
 }

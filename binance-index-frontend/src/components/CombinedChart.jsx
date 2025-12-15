@@ -62,14 +62,14 @@ function CombinedChart({ data }) {
         },
         grid: [
             {
-                left: '6%',
+                left: '3%',
                 right: '4%',
-                top: '5%',
+                top: '6%',
                 height: '38%',
                 containLabel: true
             },
             {
-                left: '6%',
+                left: '3%',
                 right: '4%',
                 top: '52%',
                 height: '28%',

@@ -158,11 +158,11 @@ public class IndexController {
 
     /**
      * 获取涨幅分布数据
-     * @param hours 基准时间（多少小时前），默认168小时（7天）
+     * @param hours 基准时间（多少小时前），支持小数如0.25表示15分钟，默认168小时（7天）
      */
     @GetMapping("/distribution")
     public ResponseEntity<Map<String, Object>> getDistribution(
-            @RequestParam(defaultValue = "168") int hours) {
+            @RequestParam(defaultValue = "168") double hours) {
         
         DistributionData data = indexCalculatorService.getDistribution(hours);
         
