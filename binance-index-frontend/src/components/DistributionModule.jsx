@@ -4,6 +4,7 @@ import ReactECharts from 'echarts-for-react'
 
 // 时间选项配置
 const TIME_OPTIONS = [
+    { label: '15分钟', value: 0.25 },
     { label: '30分钟', value: 0.5 },
     { label: '1小时', value: 1 },
     { label: '2小时', value: 2 },
