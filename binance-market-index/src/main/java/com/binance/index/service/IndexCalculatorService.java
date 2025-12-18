@@ -6,6 +6,7 @@ import com.binance.index.dto.KlineData;
 import com.binance.index.entity.CoinPrice;
 import com.binance.index.entity.MarketIndex;
 import com.binance.index.repository.CoinPriceRepository;
+import com.binance.index.repository.JdbcCoinPriceRepository;
 import com.binance.index.repository.MarketIndexRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +28,7 @@ public class IndexCalculatorService {
     private final BinanceApiService binanceApiService;
     private final MarketIndexRepository marketIndexRepository;
     private final CoinPriceRepository coinPriceRepository;
+    private final JdbcCoinPriceRepository jdbcCoinPriceRepository;
     private final ExecutorService executorService;
 
     // 缓存各币种的基准价格（回补起始时间的价格）
@@ -36,10 +38,12 @@ public class IndexCalculatorService {
     public IndexCalculatorService(BinanceApiService binanceApiService,
             MarketIndexRepository marketIndexRepository,
             CoinPriceRepository coinPriceRepository,
+            JdbcCoinPriceRepository jdbcCoinPriceRepository,
             ExecutorService klineExecutorService) {
         this.binanceApiService = binanceApiService;
         this.marketIndexRepository = marketIndexRepository;
         this.coinPriceRepository = coinPriceRepository;
+        this.jdbcCoinPriceRepository = jdbcCoinPriceRepository;
         this.executorService = klineExecutorService;
     }
 
@@ -151,7 +155,7 @@ public class IndexCalculatorService {
                 .filter(k -> k.getClosePrice() > 0)
                 .map(k -> new CoinPrice(k.getSymbol(), alignedTime, k.getClosePrice()))
                 .collect(Collectors.toList());
-        coinPriceRepository.saveAll(coinPrices);
+        jdbcCoinPriceRepository.batchInsert(coinPrices);
         log.debug("保存 {} 个币种价格", coinPrices.size());
 
         log.info("保存指数: 时间={}, 值={}%, 涨/跌={}/{}, ADR={}, 币种数={}",
@@ -323,17 +327,16 @@ public class IndexCalculatorService {
                 }
             }
 
-            // 每1万条批量保存一次，避免内存溢出
-            if (allCoinPrices.size() >= 10000) {
-                coinPriceRepository.saveAll(allCoinPrices);
-                log.info("已保存 {} 条币种价格", allCoinPrices.size());
+            // 每5万条批量保存一次（JDBC批量插入更高效）
+            if (allCoinPrices.size() >= 50000) {
+                jdbcCoinPriceRepository.batchInsert(allCoinPrices);
                 allCoinPrices.clear();
             }
         }
         // 保存剩余的
         if (!allCoinPrices.isEmpty()) {
-            coinPriceRepository.saveAll(allCoinPrices);
-            log.info("币种价格保存完成，最后一批 {} 条", allCoinPrices.size());
+            jdbcCoinPriceRepository.batchInsert(allCoinPrices);
+            log.info("币种价格保存完成");
         }
     }
 
