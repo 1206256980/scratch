@@ -405,7 +405,6 @@ public class IndexCalculatorService {
         long now = System.currentTimeMillis();
         // 转换为分钟以支持小数小时
         long minutes = (long) (hours * 60);
-        LocalDateTime baseTime = LocalDateTime.now().minusMinutes(minutes);
 
         // 从数据库获取最新价格
         List<CoinPrice> latestPrices = coinPriceRepository.findLatestPrices();
@@ -413,6 +412,10 @@ public class IndexCalculatorService {
             log.warn("数据库中没有价格数据，可能需要等待回补完成");
             return null;
         }
+
+        // 基于最新数据时间计算基准时间（而不是系统当前时间）
+        LocalDateTime latestTime = latestPrices.get(0).getTimestamp();
+        LocalDateTime baseTime = latestTime.minusMinutes(minutes);
 
         // 从数据库获取基准时间的价格
         List<CoinPrice> basePriceList = coinPriceRepository.findEarliestPricesAfter(baseTime);
@@ -422,10 +425,9 @@ public class IndexCalculatorService {
         }
 
         // 调试：打印关键时间点
-        LocalDateTime latestTime = latestPrices.get(0).getTimestamp();
         LocalDateTime actualBaseTime = basePriceList.get(0).getTimestamp();
-        log.info("[时间调试] 当前时间={}, 期望基准时间={}, 实际基准时间={}, 最新数据时间={}",
-                LocalDateTime.now(), baseTime, actualBaseTime, latestTime);
+        log.info("[时间调试] 系统时间={}, 最新数据时间={}, 期望基准时间={}, 实际基准时间={}",
+                LocalDateTime.now(), latestTime, baseTime, actualBaseTime);
 
         // 转换为Map便于查找
         // 当前价格使用收盘价
