@@ -150,10 +150,11 @@ public class IndexCalculatorService {
         MarketIndex index = new MarketIndex(alignedTime, indexValue, totalVolume, validCount, upCount, downCount, adr);
         marketIndexRepository.save(index);
 
-        // 保存每个币种的价格
+        // 保存每个币种的OHLC价格
         List<CoinPrice> coinPrices = allKlines.stream()
                 .filter(k -> k.getClosePrice() > 0)
-                .map(k -> new CoinPrice(k.getSymbol(), alignedTime, k.getClosePrice()))
+                .map(k -> new CoinPrice(k.getSymbol(), alignedTime, 
+                        k.getOpenPrice(), k.getHighPrice(), k.getLowPrice(), k.getClosePrice()))
                 .collect(Collectors.toList());
         jdbcCoinPriceRepository.batchInsert(coinPrices);
         log.debug("保存 {} 个币种价格", coinPrices.size());
@@ -342,7 +343,8 @@ public class IndexCalculatorService {
             for (Map.Entry<String, KlineData> klineEntry : entry.getValue().entrySet()) {
                 KlineData kline = klineEntry.getValue();
                 if (kline.getClosePrice() > 0) {
-                    allCoinPrices.add(new CoinPrice(kline.getSymbol(), timestamp, kline.getClosePrice()));
+                    allCoinPrices.add(new CoinPrice(kline.getSymbol(), timestamp,
+                            kline.getOpenPrice(), kline.getHighPrice(), kline.getLowPrice(), kline.getClosePrice()));
                 }
             }
 

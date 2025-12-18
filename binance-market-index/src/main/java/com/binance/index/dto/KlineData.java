@@ -3,21 +3,26 @@ package com.binance.index.dto;
 import java.time.LocalDateTime;
 
 /**
- * K线数据DTO
+ * K线数据DTO（OHLC完整数据）
  */
 public class KlineData {
     private String symbol;
     private LocalDateTime timestamp;
     private Double openPrice;
+    private Double highPrice;
+    private Double lowPrice;
     private Double closePrice;
     private Double volume; // 交易量(USDT)
 
     public KlineData() {}
 
-    public KlineData(String symbol, LocalDateTime timestamp, Double openPrice, Double closePrice, Double volume) {
+    public KlineData(String symbol, LocalDateTime timestamp, Double openPrice, Double highPrice, 
+                     Double lowPrice, Double closePrice, Double volume) {
         this.symbol = symbol;
         this.timestamp = timestamp;
         this.openPrice = openPrice;
+        this.highPrice = highPrice;
+        this.lowPrice = lowPrice;
         this.closePrice = closePrice;
         this.volume = volume;
     }
@@ -47,6 +52,22 @@ public class KlineData {
         this.openPrice = openPrice;
     }
 
+    public Double getHighPrice() {
+        return highPrice;
+    }
+
+    public void setHighPrice(Double highPrice) {
+        this.highPrice = highPrice;
+    }
+
+    public Double getLowPrice() {
+        return lowPrice;
+    }
+
+    public void setLowPrice(Double lowPrice) {
+        this.lowPrice = lowPrice;
+    }
+
     public Double getClosePrice() {
         return closePrice;
     }
@@ -63,3 +84,4 @@ public class KlineData {
         this.volume = volume;
     }
 }
+

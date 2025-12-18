@@ -246,10 +246,11 @@ public class BinanceApiService {
 
                     if (root.isArray()) {
                         for (JsonNode klineNode : root) {
-                            // K线数据格式: [openTime, open, high, low, close, volume, closeTime, quoteVolume,
-                            // ...]
+                            // K线数据格式: [openTime, open, high, low, close, volume, closeTime, quoteVolume, ...]
                             long openTime = klineNode.get(0).asLong();
                             double openPrice = klineNode.get(1).asDouble();
+                            double highPrice = klineNode.get(2).asDouble();
+                            double lowPrice = klineNode.get(3).asDouble();
                             double closePrice = klineNode.get(4).asDouble();
                             double quoteVolume = klineNode.get(7).asDouble();
 
@@ -257,7 +258,7 @@ public class BinanceApiService {
                             LocalDateTime timestamp = LocalDateTime.ofInstant(
                                     Instant.ofEpochMilli(openTime), ZoneId.of("UTC"));
 
-                            KlineData kline = new KlineData(symbol, timestamp, openPrice, closePrice, quoteVolume);
+                            KlineData kline = new KlineData(symbol, timestamp, openPrice, highPrice, lowPrice, closePrice, quoteVolume);
                             klines.add(kline);
                         }
                     }
@@ -345,17 +346,18 @@ public class BinanceApiService {
                     // 取第一根K线（已闭合的那根，而不是正在形成的第二根）
                     if (root.isArray() && root.size() >= 2) {
                         JsonNode klineNode = root.get(0);  // 取第一根，已闭合
-                        // K线数据格式: [openTime, open, high, low, close, volume, closeTime, quoteVolume,
-                        // ...]
+                        // K线数据格式: [openTime, open, high, low, close, volume, closeTime, quoteVolume, ...]
                         long openTime = klineNode.get(0).asLong();
                         double openPrice = klineNode.get(1).asDouble();
+                        double highPrice = klineNode.get(2).asDouble();
+                        double lowPrice = klineNode.get(3).asDouble();
                         double closePrice = klineNode.get(4).asDouble();
                         double quoteVolume = klineNode.get(7).asDouble();
 
                         LocalDateTime timestamp = LocalDateTime.ofInstant(
                                 Instant.ofEpochMilli(openTime), ZoneId.of("UTC"));
 
-                        return new KlineData(symbol, timestamp, openPrice, closePrice, quoteVolume);
+                        return new KlineData(symbol, timestamp, openPrice, highPrice, lowPrice, closePrice, quoteVolume);
                     }
                 }
             }

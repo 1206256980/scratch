@@ -23,14 +23,14 @@ public class JdbcCoinPriceRepository {
     private final JdbcTemplate jdbcTemplate;
 
     // 每条SQL最多插入的行数（避免SQL过长）
-    private static final int ROWS_PER_SQL = 1000;
+    private static final int ROWS_PER_SQL = 2000;
 
     public JdbcCoinPriceRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
     /**
-     * 批量插入 CoinPrice 数据
+     * 批量插入 CoinPrice 数据（包含OHLC）
      * 使用多值INSERT语法：INSERT INTO ... VALUES (...), (...), ...
      * 相比 batchUpdate，减少了网络往返次数，性能更优
      */
@@ -49,20 +49,24 @@ public class JdbcCoinPriceRepository {
             int end = Math.min(i + ROWS_PER_SQL, totalSize);
             List<CoinPrice> batch = prices.subList(i, end);
 
-            // 构建多值INSERT语句
-            StringBuilder sql = new StringBuilder("INSERT INTO coin_price (symbol, timestamp, price) VALUES ");
-            Object[] params = new Object[batch.size() * 3];
+            // 构建多值INSERT语句（包含OHLC字段）
+            StringBuilder sql = new StringBuilder(
+                "INSERT INTO coin_price (symbol, timestamp, open_price, high_price, low_price, price) VALUES ");
+            Object[] params = new Object[batch.size() * 6];
             
             for (int j = 0; j < batch.size(); j++) {
                 if (j > 0) {
                     sql.append(",");
                 }
-                sql.append("(?,?,?)");
+                sql.append("(?,?,?,?,?,?)");
                 
                 CoinPrice price = batch.get(j);
-                params[j * 3] = price.getSymbol();
-                params[j * 3 + 1] = Timestamp.valueOf(price.getTimestamp());
-                params[j * 3 + 2] = price.getPrice();
+                params[j * 6] = price.getSymbol();
+                params[j * 6 + 1] = Timestamp.valueOf(price.getTimestamp());
+                params[j * 6 + 2] = price.getOpenPrice();
+                params[j * 6 + 3] = price.getHighPrice();
+                params[j * 6 + 4] = price.getLowPrice();
+                params[j * 6 + 5] = price.getPrice();
             }
 
             jdbcTemplate.update(sql.toString(), params);
@@ -78,3 +82,4 @@ public class JdbcCoinPriceRepository {
                 totalSize, elapsed, elapsed > 0 ? totalSize * 1000 / elapsed : totalSize);
     }
 }
+
