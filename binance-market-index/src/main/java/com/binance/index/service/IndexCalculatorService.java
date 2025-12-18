@@ -58,13 +58,14 @@ public class IndexCalculatorService {
             return null;
         }
 
-        // 时间对齐到5分钟（使用UTC时间）
+        // 预测最新闭合K线的时间：当前时间对齐到5分钟后减5分钟
+        // 例如：09:07 → 对齐到09:05 → 减5分钟 → 09:00（这是最新闭合K线的openTime）
         LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
-        LocalDateTime alignedTime = alignToFiveMinutes(now);
+        LocalDateTime expectedKlineTime = alignToFiveMinutes(now).minusMinutes(5);
 
-        // 检查是否已存在该时间点的数据（防止与回补数据重叠）
-        if (marketIndexRepository.existsByTimestamp(alignedTime)) {
-            log.debug("时间点 {} 已存在数据，跳过", alignedTime);
+        // 检查是否已存在该时间点的数据（在调用API之前先检查，避免浪费资源）
+        if (marketIndexRepository.existsByTimestamp(expectedKlineTime)) {
+            log.debug("时间点 {} 已存在数据，跳过采集", expectedKlineTime);
             return null;
         }
 
@@ -93,6 +94,20 @@ public class IndexCalculatorService {
 
         long elapsed = System.currentTimeMillis() - startTime;
         log.info("K线数据获取完成，成功 {} 个，耗时 {}ms", allKlines.size(), elapsed);
+
+        if (allKlines.isEmpty()) {
+            log.warn("无有效K线数据");
+            return null;
+        }
+
+        // 使用K线本身的timestamp（所有K线应该是同一时间点的）
+        LocalDateTime klineTime = allKlines.get(0).getTimestamp();
+
+        // 再次检查是否已存在该时间点的数据（双重检查，防止并发）
+        if (marketIndexRepository.existsByTimestamp(klineTime)) {
+            log.debug("时间点 {} 已存在数据，跳过", klineTime);
+            return null;
+        }
 
         // 计算指数和成交额
         double totalChange = 0;
@@ -142,15 +157,15 @@ public class IndexCalculatorService {
         double adr = downCount > 0 ? (double) upCount / downCount : upCount;
 
         // 再次检查是否已存在该时间点的数据（双重检查）
-        if (marketIndexRepository.existsByTimestamp(alignedTime)) {
-            log.debug("时间点 {} 已存在数据（并发写入），跳过", alignedTime);
+        if (marketIndexRepository.existsByTimestamp(klineTime)) {
+            log.debug("时间点 {} 已存在数据（并发写入），跳过", klineTime);
             return null;
         }
 
-        MarketIndex index = new MarketIndex(alignedTime, indexValue, totalVolume, validCount, upCount, downCount, adr);
+        MarketIndex index = new MarketIndex(klineTime, indexValue, totalVolume, validCount, upCount, downCount, adr);
         marketIndexRepository.save(index);
 
-        // 保存每个币种的OHLC价格（使用K线本身的timestamp，而不是系统时间）
+        // 保存每个币种的OHLC价格（使用K线本身的timestamp）
         List<CoinPrice> coinPrices = allKlines.stream()
                 .filter(k -> k.getClosePrice() > 0)
                 .map(k -> new CoinPrice(k.getSymbol(), k.getTimestamp(), 
@@ -160,10 +175,11 @@ public class IndexCalculatorService {
         log.debug("保存 {} 个币种价格", coinPrices.size());
 
         log.info("保存指数: 时间={}, 值={}%, 涨/跌={}/{}, ADR={}, 币种数={}",
-                alignedTime, String.format("%.4f", indexValue),
+                klineTime, String.format("%.4f", indexValue),
                 upCount, downCount, String.format("%.2f", adr), validCount);
         return index;
     }
+
 
 
 
