@@ -587,8 +587,8 @@ public class IndexCalculatorService {
                 }
             }
 
-            // 每5万条批量保存一次（JDBC批量插入更高效）
-            if (allCoinPrices.size() >= 50000) {
+            // 每3万条批量保存一次（JDBC批量插入更高效）
+            if (allCoinPrices.size() >= 30000) {
                 jdbcCoinPriceRepository.batchInsert(allCoinPrices);
                 allCoinPrices.clear();
             }
