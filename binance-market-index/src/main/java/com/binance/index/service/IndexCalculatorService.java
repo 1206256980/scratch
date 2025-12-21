@@ -567,6 +567,12 @@ public class IndexCalculatorService {
         }
 
         // 保存每个时间点的币种价格
+        if (!existingPriceTimestamps.isEmpty()) {
+            LocalDateTime earliest = existingPriceTimestamps.stream().min(LocalDateTime::compareTo).orElse(null);
+            LocalDateTime latest = existingPriceTimestamps.stream().max(LocalDateTime::compareTo).orElse(null);
+            log.info("历史已有 {} 个时间点的价格数据，最早: {}，最晚: {}，将跳过这些时间点",
+                    existingPriceTimestamps.size(), earliest, latest);
+        }
         log.info("开始保存币种价格历史...");
         List<CoinPrice> allCoinPrices = new ArrayList<>();
         for (Map.Entry<Long, Map<String, KlineData>> entry : timeSeriesData.entrySet()) {
@@ -620,6 +626,13 @@ public class IndexCalculatorService {
      */
     public List<CoinPrice> getCoinPriceHistory(String symbol, LocalDateTime startTime) {
         return coinPriceRepository.findBySymbolAndTimeRange(symbol, startTime);
+    }
+
+    /**
+     * 获取所有基准价格（调试用）
+     */
+    public List<BasePrice> getAllBasePrices() {
+        return basePriceRepository.findAll();
     }
 
     /**
@@ -727,23 +740,6 @@ public class IndexCalculatorService {
                 }
 
             }
-        }
-
-        // 调试日志：打印前5个币种的计算详情
-        int debugCount = 0;
-        for (Map.Entry<String, Double> entry : changeMap.entrySet()) {
-            if (debugCount++ >= 5)
-                break;
-            String symbol = entry.getKey();
-            log.info("[调试] {} 基准开盘价={} 当前收盘价={} 当前涨幅={}% 最高价={} 最高涨幅={}% 最低价={} 最低涨幅={}%",
-                    symbol,
-                    basePriceMap.get(symbol),
-                    currentPriceMap.get(symbol),
-                    String.format("%.4f", entry.getValue()),
-                    maxPriceMap.get(symbol),
-                    String.format("%.4f", maxChangeMap.getOrDefault(symbol, 0.0)),
-                    minPriceMap.get(symbol),
-                    String.format("%.4f", minChangeMap.getOrDefault(symbol, 0.0)));
         }
 
         log.info("涨跌幅计算完成: {} 个币种", changeMap.size());

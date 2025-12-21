@@ -158,14 +158,15 @@ public class IndexController {
 
     /**
      * 获取涨幅分布数据
+     * 
      * @param hours 基准时间（多少小时前），支持小数如0.25表示15分钟，默认168小时（7天）
      */
     @GetMapping("/distribution")
     public ResponseEntity<Map<String, Object>> getDistribution(
             @RequestParam(defaultValue = "168") double hours) {
-        
+
         DistributionData data = indexCalculatorService.getDistribution(hours);
-        
+
         Map<String, Object> response = new HashMap<>();
         if (data != null) {
             response.put("success", true);
@@ -174,24 +175,24 @@ public class IndexController {
             response.put("success", false);
             response.put("message", "获取分布数据失败");
         }
-        
+
         return ResponseEntity.ok(response);
     }
 
     /**
      * 调试接口：查询指定币种的历史价格数据
+     * 
      * @param symbol 币种符号，如 SOLUSDT
-     * @param hours 查询多少小时的数据，默认1小时
+     * @param hours  查询多少小时的数据，默认1小时
      */
     @GetMapping("/debug/prices")
     public ResponseEntity<Map<String, Object>> debugPrices(
             @RequestParam String symbol,
             @RequestParam(defaultValue = "1") double hours) {
-        
-        java.time.LocalDateTime startTime = java.time.LocalDateTime.now().minusMinutes((long)(hours * 60));
-        List<com.binance.index.entity.CoinPrice> prices = 
-                indexCalculatorService.getCoinPriceHistory(symbol, startTime);
-        
+
+        java.time.LocalDateTime startTime = java.time.LocalDateTime.now().minusMinutes((long) (hours * 60));
+        List<com.binance.index.entity.CoinPrice> prices = indexCalculatorService.getCoinPriceHistory(symbol, startTime);
+
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("symbol", symbol);
@@ -206,8 +207,33 @@ public class IndexController {
             item.put("closePrice", p.getPrice());
             return item;
         }).collect(Collectors.toList()));
-        
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 调试接口：查询所有基准价格
+     */
+    @GetMapping("/debug/basePrices")
+    public ResponseEntity<Map<String, Object>> debugBasePrices() {
+        List<com.binance.index.entity.BasePrice> basePrices = indexCalculatorService.getAllBasePrices();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("count", basePrices.size());
+
+        if (!basePrices.isEmpty()) {
+            response.put("createdAt", basePrices.get(0).getCreatedAt().toString());
+        }
+
+        response.put("data", basePrices.stream().map(p -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("symbol", p.getSymbol());
+            item.put("price", p.getPrice());
+            item.put("createdAt", p.getCreatedAt().toString());
+            return item;
+        }).collect(Collectors.toList()));
+
         return ResponseEntity.ok(response);
     }
 }
-
