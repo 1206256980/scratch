@@ -405,18 +405,41 @@ public class IndexCalculatorService {
             log.info("数据库中没有基准价格，将从历史数据计算");
         }
 
+        // 查询数据库最晚时间点
+        LocalDateTime dbLatest = coinPriceRepository.findLatestTimestamp();
+
         List<String> symbols = binanceApiService.getAllUsdtSymbols();
         long now = System.currentTimeMillis();
 
-        // 对齐到上一个5分钟边界（确保只获取已闭合的K线）
-        // 例如：当前 09:02，对齐到 09:00，这样只会拿到 <=08:55 的已闭合K线
+        // 计算最新闭合K线时间：对齐到5分钟边界再减5分钟
+        // 例如：当前 14:22 → 对齐到14:20 → 减5分钟 → 14:15（这是最新闭合K线的openTime）
         long fiveMinutesMs = 5 * 60 * 1000;
-        long alignedEndTime = (now / fiveMinutesMs) * fiveMinutesMs;
-        long startTime = alignedEndTime - (long) days * 24 * 60 * 60 * 1000;
+        long alignedNow = (now / fiveMinutesMs) * fiveMinutesMs;
+        long latestClosedKlineMs = alignedNow - fiveMinutesMs;
+        LocalDateTime latestClosedKline = LocalDateTime.ofInstant(
+                java.time.Instant.ofEpochMilli(latestClosedKlineMs), ZoneId.of("UTC"));
 
-        log.info("回补时间范围: {} -> {} (对齐到5分钟边界)",
-                LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(startTime), ZoneId.systemDefault()),
-                LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(alignedEndTime), ZoneId.systemDefault()));
+        long startTime;
+        long alignedEndTime = latestClosedKlineMs;
+
+        if (dbLatest == null) {
+            // 数据库为空，回补 N 天
+            startTime = latestClosedKlineMs - (long) days * 24 * 60 * 60 * 1000;
+            log.info("数据库为空，回补 {} 天数据", days);
+        } else if (!dbLatest.isBefore(latestClosedKline)) {
+            // 数据库已是最新，跳过回补
+            log.info("数据库已是最新（dbLatest={}, latestClosedKline={}），跳过API回补", dbLatest, latestClosedKline);
+            return;
+        } else {
+            // 增量回补：从 dbLatest + 5min 开始
+            LocalDateTime incrementalStart = dbLatest.plusMinutes(5);
+            startTime = incrementalStart.atZone(ZoneId.of("UTC")).toInstant().toEpochMilli();
+            log.info("增量回补模式：从 {} 到 {} (dbLatest={})", incrementalStart, latestClosedKline, dbLatest);
+        }
+
+        log.info("回补时间范围: {} -> {} (最新闭合K线)",
+                LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(startTime), ZoneId.of("UTC")),
+                latestClosedKline);
 
         // 存储每个时间点的所有币种数据: timestamp -> (symbol -> KlineData)
         Map<Long, Map<String, KlineData>> timeSeriesData = new TreeMap<>();
@@ -568,9 +591,8 @@ public class IndexCalculatorService {
 
         // 保存每个时间点的币种价格
         if (!existingPriceTimestamps.isEmpty()) {
-            // 查询数据库中全部价格数据的最早和最晚时间
+            // 使用方法开头已查询的 dbLatest
             LocalDateTime dbEarliest = coinPriceRepository.findEarliestTimestamp();
-            LocalDateTime dbLatest = coinPriceRepository.findLatestTimestamp();
             log.info("数据库已有价格数据，最早: {}，最晚: {}，本次回补范围内有 {} 个时间点将跳过",
                     dbEarliest, dbLatest, existingPriceTimestamps.size());
         }
