@@ -7,6 +7,7 @@ import com.binance.index.service.IndexCalculatorService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -299,6 +300,16 @@ public class IndexController {
             return item;
         }).collect(Collectors.toList()));
 
+        return ResponseEntity.ok(response);
+    }
+    /**
+     * 调试接口：验证指数计算
+     * 使用全局基准价格（内存中的basePrices）和数据库最新价格进行计算
+     * 无需任何参数，直接验证当前实时指数计算是否正确
+     */
+    @GetMapping("/debug/verify")
+    public ResponseEntity<Map<String, Object>> debugVerifyIndex() {
+        Map<String, Object> response = indexCalculatorService.verifyIndexCalculation();
         return ResponseEntity.ok(response);
     }
 

@@ -677,6 +677,118 @@ public class IndexCalculatorService {
     }
 
     /**
+     * 获取指定时间之后最早的价格数据（用于debug接口）
+     */
+    public List<CoinPrice> getEarliestPricesAfter(LocalDateTime startTime) {
+        return coinPriceRepository.findEarliestPricesAfter(startTime);
+    }
+
+    /**
+     * 获取指定时间之前最晚的价格数据（用于debug接口）
+     */
+    public List<CoinPrice> getLatestPricesBefore(LocalDateTime endTime) {
+        return coinPriceRepository.findLatestPricesBefore(endTime);
+    }
+
+    /**
+     * 验证指数计算（用于debug接口）
+     * 使用全局基准价格和最新数据库价格计算，返回详细信息
+     */
+    public Map<String, Object> verifyIndexCalculation() {
+        Map<String, Object> response = new HashMap<>();
+
+        // 获取全局基准价格
+        if (basePrices == null || basePrices.isEmpty()) {
+            response.put("success", false);
+            response.put("message", "全局基准价格未初始化");
+            return response;
+        }
+
+        // 获取基准价格创建时间
+        List<BasePrice> dbBasePrices = basePriceRepository.findAll();
+        LocalDateTime basePriceCreatedAt = null;
+        if (!dbBasePrices.isEmpty()) {
+            basePriceCreatedAt = dbBasePrices.get(0).getCreatedAt();
+        }
+
+        // 获取数据库最新价格
+        List<CoinPrice> latestPrices = coinPriceRepository.findLatestPrices();
+        if (latestPrices.isEmpty()) {
+            response.put("success", false);
+            response.put("message", "数据库中没有最新价格数据");
+            return response;
+        }
+
+        LocalDateTime latestPriceTime = latestPrices.get(0).getTimestamp();
+
+        response.put("basePriceTime", basePriceCreatedAt != null ? basePriceCreatedAt.toString() : "未知");
+        response.put("latestPriceTime", latestPriceTime.toString());
+        response.put("basePriceCount", basePrices.size());
+        response.put("latestPriceCount", latestPrices.size());
+
+        // 转换最新价格为Map
+        Map<String, Double> latestPriceMap = latestPrices.stream()
+                .collect(Collectors.toMap(CoinPrice::getSymbol, CoinPrice::getPrice, (a, b) -> a));
+
+        // 计算每个币种的涨跌幅
+        List<Map<String, Object>> coinDetails = new ArrayList<>();
+        double totalChange = 0;
+        int validCount = 0;
+        int upCount = 0;
+        int downCount = 0;
+
+        for (Map.Entry<String, Double> entry : latestPriceMap.entrySet()) {
+            String symbol = entry.getKey();
+            Double latestPrice = entry.getValue();
+            Double basePrice = basePrices.get(symbol);
+
+            if (basePrice != null && basePrice > 0 && latestPrice != null && latestPrice > 0) {
+                double changePercent = (latestPrice - basePrice) / basePrice * 100;
+
+                Map<String, Object> detail = new HashMap<>();
+                detail.put("symbol", symbol);
+                detail.put("basePrice", basePrice);
+                detail.put("latestPrice", latestPrice);
+                detail.put("changePercent", Math.round(changePercent * 10000) / 10000.0);
+
+                coinDetails.add(detail);
+
+                totalChange += changePercent;
+                validCount++;
+                if (changePercent > 0) upCount++;
+                else if (changePercent < 0) downCount++;
+            }
+        }
+
+        // 按涨跌幅排序
+        coinDetails.sort((a, b) -> Double.compare(
+                (Double) b.get("changePercent"),
+                (Double) a.get("changePercent")));
+
+        // 计算指数（简单平均）
+        double calculatedIndex = validCount > 0 ? totalChange / validCount : 0;
+
+        // 获取系统存储的最新指数
+        MarketIndex storedIndex = marketIndexRepository.findTopByOrderByTimestampDesc().orElse(null);
+
+        response.put("success", true);
+        response.put("totalCoins", validCount);
+        response.put("upCount", upCount);
+        response.put("downCount", downCount);
+        response.put("calculatedIndex", Math.round(calculatedIndex * 10000) / 10000.0);
+        
+        if (storedIndex != null) {
+            response.put("storedIndex", Math.round(storedIndex.getIndexValue() * 10000) / 10000.0);
+            response.put("storedIndexTime", storedIndex.getTimestamp().toString());
+            response.put("indexMatch", Math.abs(calculatedIndex - storedIndex.getIndexValue()) < 0.0001);
+        }
+
+        response.put("coins", coinDetails);
+
+        return response;
+    }
+
+    /**
      * 删除指定时间范围内的数据（用于清理污染数据）
      * 
      * @param start 开始时间
