@@ -12,6 +12,13 @@ function App() {
     const [error, setError] = useState(null)
     const [timeRange, setTimeRange] = useState(168) // 默认7天
     const [autoRefresh, setAutoRefresh] = useState(true)
+    const [selectedTimeRange, setSelectedTimeRange] = useState(null) // 刷选的时间区间
+
+    // 处理图表时间区间选择
+    const handleTimeRangeSelect = (range) => {
+        console.log('图表时间联动:', range)
+        setSelectedTimeRange(range)
+    }
 
     const fetchData = useCallback(async () => {
         try {
@@ -163,12 +170,12 @@ function App() {
                         <p>服务启动后需要等待数据回补完成</p>
                     </div>
                 ) : (
-                    <CombinedChart data={historyData} />
+                    <CombinedChart data={historyData} onTimeRangeSelect={handleTimeRangeSelect} />
                 )}
             </div>
 
             {/* 涨幅分布模块 */}
-            <DistributionModule />
+            <DistributionModule externalTimeRange={selectedTimeRange} />
 
             <footer className="footer">
                 <p>数据来源: 币安合约API | 每5分钟采集一次 | {stats?.coinCount || 0} 个币种参与计算</p>

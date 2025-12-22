@@ -1,6 +1,8 @@
 import ReactECharts from 'echarts-for-react'
+import { useRef, useCallback } from 'react'
 
-function CombinedChart({ data }) {
+function CombinedChart({ data, onTimeRangeSelect }) {
+    const chartRef = useRef(null)
     if (!data || data.length === 0) {
         return null
     }
@@ -190,6 +192,40 @@ function CombinedChart({ data }) {
                 textStyle: { color: '#64748b' }
             }
         ],
+        // brush 工具配置 - 允许用户刷选时间区间
+        brush: {
+            toolbox: ['lineX', 'clear'],
+            xAxisIndex: 0,
+            brushStyle: {
+                borderWidth: 1,
+                color: 'rgba(99, 102, 241, 0.2)',
+                borderColor: 'rgba(99, 102, 241, 0.6)'
+            },
+            throttleType: 'debounce',
+            throttleDelay: 300
+        },
+        toolbox: {
+            show: true,
+            right: 60,
+            top: 5,
+            feature: {
+                brush: {
+                    type: ['lineX', 'clear'],
+                    title: {
+                        lineX: '时间刷选',
+                        clear: '清除选择'
+                    }
+                }
+            },
+            iconStyle: {
+                borderColor: '#64748b'
+            },
+            emphasis: {
+                iconStyle: {
+                    borderColor: '#6366f1'
+                }
+            }
+        },
         series: [
             {
                 name: '市场指数',
@@ -260,12 +296,42 @@ function CombinedChart({ data }) {
         ]
     }
 
+    // 格式化时间为 yyyy-MM-dd HH:mm
+    const formatDateTime = (timestamp) => {
+        const date = new Date(timestamp)
+        const pad = (n) => String(n).padStart(2, '0')
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+    }
+
+    // brush 选择结束事件处理
+    const handleBrushEnd = useCallback((params) => {
+        if (!onTimeRangeSelect) return
+        if (!params.areas || params.areas.length === 0) return
+
+        const area = params.areas[0]
+        if (area.coordRange && area.coordRange.length === 2) {
+            const [startTimestamp, endTimestamp] = area.coordRange
+            const startTime = formatDateTime(startTimestamp)
+            const endTime = formatDateTime(endTimestamp)
+
+            console.log('刷选时间区间:', startTime, '~', endTime)
+            onTimeRangeSelect({ start: startTime, end: endTime })
+        }
+    }, [onTimeRangeSelect])
+
+    // 图表事件
+    const onEvents = {
+        brushEnd: handleBrushEnd
+    }
+
     return (
         <ReactECharts
+            ref={chartRef}
             option={option}
             style={{ height: '620px', width: '100%' }}
             opts={{ renderer: 'canvas' }}
             notMerge={true}
+            onEvents={onEvents}
         />
     )
 }

@@ -39,7 +39,7 @@ const getDefaultTimeRange = () => {
     }
 }
 
-function DistributionModule() {
+function DistributionModule({ externalTimeRange }) {
     const [timeMode, setTimeMode] = useState('hours') // 'hours' 或 'range'
     const [timeBase, setTimeBase] = useState(24) // 默认24小时
     const [startTime, setStartTime] = useState(getDefaultTimeRange().start)
@@ -51,7 +51,19 @@ function DistributionModule() {
     const [copiedSymbol, setCopiedSymbol] = useState(null) // 复制提示
     const [sortType, setSortType] = useState('current') // 排序类型: current, max, min
     const [sortOrder, setSortOrder] = useState('desc') // 排序方向: asc, desc
+    const [isLinked, setIsLinked] = useState(false) // 是否来自图表联动
     const chartRef = useRef(null)
+
+    // 监听外部时间范围变化 - 对接图表联动
+    useEffect(() => {
+        if (externalTimeRange && externalTimeRange.start && externalTimeRange.end) {
+            console.log('收到图表联动时间:', externalTimeRange)
+            setTimeMode('range')
+            setStartTime(externalTimeRange.start)
+            setEndTime(externalTimeRange.end)
+            setIsLinked(true)
+        }
+    }, [externalTimeRange])
 
     // 构建API URL
     const buildApiUrl = useCallback(() => {
@@ -339,15 +351,15 @@ function DistributionModule() {
                     <div className="time-mode-toggle">
                         <button
                             className={`mode-btn ${timeMode === 'hours' ? 'active' : ''}`}
-                            onClick={() => setTimeMode('hours')}
+                            onClick={() => { setTimeMode('hours'); setIsLinked(false) }}
                         >
                             相对时间
                         </button>
                         <button
                             className={`mode-btn ${timeMode === 'range' ? 'active' : ''}`}
-                            onClick={() => setTimeMode('range')}
+                            onClick={() => { setTimeMode('range'); setIsLinked(false) }}
                         >
-                            时间范围
+                            时间范围 {isLinked && <span className="linked-badge">🔗联动</span>}
                         </button>
                     </div>
 
