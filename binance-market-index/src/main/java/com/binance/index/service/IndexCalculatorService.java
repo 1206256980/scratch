@@ -503,23 +503,37 @@ public class IndexCalculatorService {
         }
 
         // 更新全局基准价格并保存到数据库
-        // 注意：只有在数据库没有基准价格时才更新，避免增量回补覆盖原有基准价格
         boolean basePricesWereLoaded = !existingBasePrices.isEmpty();
-        if (!historicalBasePrices.isEmpty() && !basePricesWereLoaded) {
+        
+        if (!basePricesWereLoaded && !historicalBasePrices.isEmpty()) {
+            // 场景1：数据库没有基准价格（首次运行），使用本次回补数据初始化
             basePrices = new HashMap<>(historicalBasePrices);
             basePriceTime = LocalDateTime.now();
 
-            // 保存到数据库（仅当数据库中没有基准价格时）
-            if (basePriceRepository.count() == 0) {
-                List<BasePrice> basePriceList = historicalBasePrices.entrySet().stream()
-                        .map(e -> new BasePrice(e.getKey(), e.getValue()))
-                        .collect(Collectors.toList());
-                basePriceRepository.saveAll(basePriceList);
-                log.info("基准价格已保存到数据库，共 {} 个币种", basePriceList.size());
-            }
-            log.info("基准价格设置完成，共 {} 个币种", basePrices.size());
+            List<BasePrice> basePriceList = historicalBasePrices.entrySet().stream()
+                    .map(e -> new BasePrice(e.getKey(), e.getValue()))
+                    .collect(Collectors.toList());
+            basePriceRepository.saveAll(basePriceList);
+            log.info("基准价格已初始化并保存到数据库，共 {} 个币种", basePriceList.size());
         } else if (basePricesWereLoaded) {
-            log.info("使用数据库中的基准价格，共 {} 个币种，不覆盖", basePrices.size());
+            // 场景2：数据库有基准价格，检查是否有新币需要添加
+            Set<String> newSymbols = new HashSet<>(historicalBasePrices.keySet());
+            newSymbols.removeAll(basePrices.keySet());
+            
+            if (!newSymbols.isEmpty()) {
+                // 将新币的基准价格添加到内存缓存
+                for (String symbol : newSymbols) {
+                    basePrices.put(symbol, historicalBasePrices.get(symbol));
+                }
+                
+                // 保存新币基准价格到数据库
+                List<BasePrice> newBasePriceList = newSymbols.stream()
+                        .map(s -> new BasePrice(s, historicalBasePrices.get(s)))
+                        .collect(Collectors.toList());
+                basePriceRepository.saveAll(newBasePriceList);
+                log.info("新币基准价格已保存: {} 个, 币种={}", newSymbols.size(), newSymbols);
+            }
+            log.info("使用数据库中的基准价格，共 {} 个币种（含新增 {} 个）", basePrices.size(), newSymbols.size());
         }
 
         // 计算每个时间点的指数
@@ -556,7 +570,7 @@ public class IndexCalculatorService {
             for (Map.Entry<String, KlineData> klineEntry : symbolData.entrySet()) {
                 String symbol = klineEntry.getKey();
                 KlineData kline = klineEntry.getValue();
-                Double basePrice = historicalBasePrices.get(symbol);
+                Double basePrice = basePrices.get(symbol);
 
                 if (basePrice == null || basePrice <= 0) {
                     continue;
