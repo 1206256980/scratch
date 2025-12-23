@@ -1378,25 +1378,25 @@ public class IndexCalculatorService {
         boolean inWave = false;
 
         for (CoinPrice price : prices) {
-            // 使用K线的OHLC价格进行波段识别
+            // 使用K线的价格进行波段识别
+            // 关键：用收盘价作为"确认的低点"，用最高价作为峰值
             double highPrice = price.getHighPrice() != null ? price.getHighPrice() : price.getPrice();
-            double lowPrice = price.getLowPrice() != null ? price.getLowPrice() : price.getPrice();
-            double closePrice = price.getPrice(); // closePrice
+            double closePrice = price.getPrice(); // 收盘价（确认的价格）
             LocalDateTime timestamp = price.getTimestamp();
 
             if (!inWave) {
-                // 开始新波段：初始化低点和高点
-                waveLowPrice = lowPrice;
+                // 开始新波段：用收盘价初始化（不是lowPrice，避免影线误导）
+                waveLowPrice = closePrice;
                 waveLowTime = timestamp;
                 wavePeakPrice = highPrice;
                 wavePeakTime = timestamp;
                 inWave = true;
             } else {
-                // 检查是否创新低（更新真正的波段起点）
-                if (lowPrice < waveLowPrice) {
-                    waveLowPrice = lowPrice;
+                // 检查是否创新低（用收盘价判断，更稳定）
+                if (closePrice < waveLowPrice) {
+                    waveLowPrice = closePrice;
                     waveLowTime = timestamp;
-                    // 新低点意味着之前的高点失效，重置高点
+                    // 新低点意味着之前的高点失效，重置
                     wavePeakPrice = highPrice;
                     wavePeakTime = timestamp;
                 } 
@@ -1406,16 +1406,16 @@ public class IndexCalculatorService {
                     wavePeakTime = timestamp;
                 }
 
-                // 检查回调幅度：使用收盘价判断（更稳定）
+                // 检查回调幅度：使用收盘价判断
                 double drawdown = wavePeakPrice > 0 ? (wavePeakPrice - closePrice) / wavePeakPrice * 100 : 0;
 
                 if (drawdown >= pullbackThreshold) {
-                    // 波段结束，计算从真正低点到高点的涨幅
+                    // 波段结束，计算从低点收盘价到高点的涨幅
                     double uptrendPercent = waveLowPrice > 0 
                             ? (wavePeakPrice - waveLowPrice) / waveLowPrice * 100 
                             : 0;
 
-                    // 只记录正向涨幅，且起点和终点必须是不同的K线（过滤单根K线内的波动）
+                    // 只记录正向涨幅，且起点和终点必须是不同的K线
                     boolean isDifferentCandle = !waveLowTime.equals(wavePeakTime);
                     if (uptrendPercent > 0 && uptrendPercent > maxUptrendPercent && isDifferentCandle) {
                         maxUptrendPercent = uptrendPercent;
