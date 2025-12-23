@@ -1333,7 +1333,7 @@ public class IndexCalculatorService {
         UptrendData data = new UptrendData();
         data.setTimestamp(System.currentTimeMillis());
         data.setTotalCoins(allWaves.size()); // 现在是波段总数
-        data.setPullbackThreshold(pullbackThreshold);
+        data.setPullbackThreshold(keepRatio);
         data.setAvgUptrend(Math.round(avgUptrend * 100) / 100.0);
         data.setMaxUptrend(Math.round(maxUptrend * 100) / 100.0);
         data.setOngoingCount(ongoingCount);
