@@ -1415,8 +1415,9 @@ public class IndexCalculatorService {
                             ? (wavePeakPrice - waveLowPrice) / waveLowPrice * 100 
                             : 0;
 
-                    // 只记录正向涨幅
-                    if (uptrendPercent > 0 && uptrendPercent > maxUptrendPercent) {
+                    // 只记录正向涨幅，且起点和终点必须是不同的K线（过滤单根K线内的波动）
+                    boolean isDifferentCandle = !waveLowTime.equals(wavePeakTime);
+                    if (uptrendPercent > 0 && uptrendPercent > maxUptrendPercent && isDifferentCandle) {
                         maxUptrendPercent = uptrendPercent;
                         maxWaveStartPrice = waveLowPrice;
                         maxWavePeakPrice = wavePeakPrice;
@@ -1438,8 +1439,9 @@ public class IndexCalculatorService {
         if (inWave && waveLowPrice > 0) {
             double uptrendPercent = (wavePeakPrice - waveLowPrice) / waveLowPrice * 100;
 
-            // 只记录正向涨幅
-            if (uptrendPercent > 0 && uptrendPercent > maxUptrendPercent) {
+            // 只记录正向涨幅，且起点和终点必须是不同的K线
+            boolean isDifferentCandle = !waveLowTime.equals(wavePeakTime);
+            if (uptrendPercent > 0 && uptrendPercent > maxUptrendPercent && isDifferentCandle) {
                 maxUptrendPercent = uptrendPercent;
                 maxWaveStartPrice = waveLowPrice;
                 maxWavePeakPrice = wavePeakPrice;
