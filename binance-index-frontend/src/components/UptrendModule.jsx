@@ -476,6 +476,18 @@ function UptrendModule() {
                         <>
                             <div className="ranking-header">
                                 <div className="ranking-title">
+                                    {selectedSymbol && (
+                                        <button
+                                            className="back-btn"
+                                            onClick={() => {
+                                                setSelectedSymbol(null)
+                                                setShowAllRanking(true)
+                                            }}
+                                            title="返回全部排行"
+                                        >
+                                            ←
+                                        </button>
+                                    )}
                                     <span className={`range-badge ${showAllRanking ? 'all' : ''}`} style={{ background: 'linear-gradient(135deg, #ef4444, #f59e0b)' }}>{rankingData.title}</span>
                                     <span className="coin-count">{rankingData.subtitle}</span>
                                 </div>
