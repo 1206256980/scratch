@@ -1467,10 +1467,29 @@ public class IndexCalculatorService {
                                 wavePeakPrice));
                     }
 
-                    // 以当前收盘价开始新波段
-                    waveStartPrice = closePrice;
-                    waveStartTime = timestamp;
-                    wavePeakPrice = closePrice;
+                    // 回溯找到从波段峰值到当前的最低点作为新波段起点
+                    // 这样可以更准确地捕捉真正的涨势起点
+                    int peakIndex = prices.indexOf(price); // 当前索引
+                    double lowestPrice = closePrice;
+                    LocalDateTime lowestTime = timestamp;
+                    
+                    // 从峰值时间点往后找最低点（最多找当前位置）
+                    for (int j = peakIndex; j >= 0; j--) {
+                        CoinPrice p = prices.get(j);
+                        if (p.getTimestamp().isBefore(wavePeakTime) || p.getTimestamp().equals(wavePeakTime)) {
+                            break; // 不要回溯到峰值之前
+                        }
+                        double pClose = p.getPrice();
+                        if (pClose < lowestPrice) {
+                            lowestPrice = pClose;
+                            lowestTime = p.getTimestamp();
+                        }
+                    }
+                    
+                    // 以找到的最低点开始新波段
+                    waveStartPrice = lowestPrice;
+                    waveStartTime = lowestTime;
+                    wavePeakPrice = highPrice; // 当前K线的高点
                     wavePeakTime = timestamp;
                     candlesSinceNewHigh = 0;
                 }
