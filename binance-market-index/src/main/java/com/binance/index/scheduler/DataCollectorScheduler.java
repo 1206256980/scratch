@@ -62,15 +62,19 @@ public class DataCollectorScheduler {
      */
     @Scheduled(cron = "10 0/5 * * * *")
     public void collectData() {
+        // if (!isBackfillComplete) {
+        //     // 回补未完成时，采集数据但暂存到内存队列，不保存到数据库
+        //     // 这样可以确保回补期间的实时数据不会丢失
+        //     log.info("回补进行中，采集数据暂存到内存队列");
+        //     try {
+        //         indexCalculatorService.collectAndBuffer();
+        //     } catch (Exception e) {
+        //         log.error("暂存采集失败: {}", e.getMessage(), e);
+        //     }
+        //     return;
+        // }
         if (!isBackfillComplete) {
-            // 回补未完成时，采集数据但暂存到内存队列，不保存到数据库
-            // 这样可以确保回补期间的实时数据不会丢失
-            log.info("回补进行中，采集数据暂存到内存队列");
-            try {
-                indexCalculatorService.collectAndBuffer();
-            } catch (Exception e) {
-                log.error("暂存采集失败: {}", e.getMessage(), e);
-            }
+            log.debug("历史数据回补尚未完成，跳过本次采集");
             return;
         }
 
