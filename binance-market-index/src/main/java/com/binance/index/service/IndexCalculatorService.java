@@ -1569,32 +1569,60 @@ public class IndexCalculatorService {
         // 计算统计信息
         double totalUptrend = allWaves.stream().mapToDouble(UptrendData.CoinUptrend::getUptrendPercent).sum();
         double avgUptrend = totalUptrend / allWaves.size();
-        double maxUptrend = allWaves.get(0).getUptrendPercent();
+        double maxUptrendValue = allWaves.get(0).getUptrendPercent();
+        double minUptrendValue = allWaves.stream().mapToDouble(UptrendData.CoinUptrend::getUptrendPercent).min().orElse(0);
 
-        // 构建分布区间 (0-5%, 5-10%, 10-15%, 15-20%, 20-30%, 30%+)
-        double[] bucketBounds = { 0, 5, 10, 15, 20, 30, Double.MAX_VALUE };
-        String[] bucketNames = { "0%~5%", "5%~10%", "10%~15%", "15%~20%", "20%~30%", "30%+" };
-
-        Map<Integer, List<UptrendData.CoinUptrend>> bucketMap = new HashMap<>();
-        for (int i = 0; i < bucketNames.length; i++) {
-            bucketMap.put(i, new ArrayList<>());
+        // 根据数据范围动态确定区间大小（与涨幅分布一致）
+        double range = maxUptrendValue - minUptrendValue;
+        double bucketSize;
+        if (range <= 2) {
+            bucketSize = 0.2; // 0.2%区间，适合极小范围
+        } else if (range <= 5) {
+            bucketSize = 0.5; // 0.5%区间
+        } else if (range <= 20) {
+            bucketSize = 1; // 1%区间
+        } else if (range <= 50) {
+            bucketSize = 2; // 2%区间
+        } else {
+            bucketSize = 5; // 5%区间，适合大范围
         }
 
+        // 计算区间边界
+        double bucketMin = Math.floor(minUptrendValue / bucketSize) * bucketSize;
+        double bucketMax = Math.ceil(maxUptrendValue / bucketSize) * bucketSize;
+
+        // 创建区间
+        Map<String, List<UptrendData.CoinUptrend>> bucketMap = new LinkedHashMap<>();
+        for (double start = bucketMin; start < bucketMax; start += bucketSize) {
+            String rangeKey;
+            if (bucketSize < 1) {
+                rangeKey = String.format("%.1f%%~%.1f%%", start, start + bucketSize);
+            } else {
+                rangeKey = String.format("%.0f%%~%.0f%%", start, start + bucketSize);
+            }
+            bucketMap.put(rangeKey, new ArrayList<>());
+        }
+
+        // 分配波段到区间
         for (UptrendData.CoinUptrend wave : allWaves) {
             double pct = wave.getUptrendPercent();
-            for (int i = 0; i < bucketBounds.length - 1; i++) {
-                if (pct >= bucketBounds[i] && pct < bucketBounds[i + 1]) {
-                    bucketMap.get(i).add(wave);
-                    break;
-                }
+            double bucketStart = Math.floor(pct / bucketSize) * bucketSize;
+            String rangeKey;
+            if (bucketSize < 1) {
+                rangeKey = String.format("%.1f%%~%.1f%%", bucketStart, bucketStart + bucketSize);
+            } else {
+                rangeKey = String.format("%.0f%%~%.0f%%", bucketStart, bucketStart + bucketSize);
+            }
+            if (bucketMap.containsKey(rangeKey)) {
+                bucketMap.get(rangeKey).add(wave);
             }
         }
 
         List<UptrendData.UptrendBucket> distribution = new ArrayList<>();
-        for (int i = 0; i < bucketNames.length; i++) {
-            List<UptrendData.CoinUptrend> waves = bucketMap.get(i);
+        for (Map.Entry<String, List<UptrendData.CoinUptrend>> entry : bucketMap.entrySet()) {
+            List<UptrendData.CoinUptrend> waves = entry.getValue();
             int bucketOngoing = (int) waves.stream().filter(UptrendData.CoinUptrend::isOngoing).count();
-            distribution.add(new UptrendData.UptrendBucket(bucketNames[i], waves.size(), bucketOngoing, waves));
+            distribution.add(new UptrendData.UptrendBucket(entry.getKey(), waves.size(), bucketOngoing, waves));
         }
 
         // 构建响应
@@ -1603,7 +1631,7 @@ public class IndexCalculatorService {
         data.setTotalCoins(allWaves.size()); // 现在是波段总数
         data.setPullbackThreshold(keepRatio);
         data.setAvgUptrend(Math.round(avgUptrend * 100) / 100.0);
-        data.setMaxUptrend(Math.round(maxUptrend * 100) / 100.0);
+        data.setMaxUptrend(Math.round(maxUptrendValue * 100) / 100.0);
         data.setOngoingCount(ongoingCount);
         data.setDistribution(distribution);
         data.setAllCoinsRanking(allWaves);
