@@ -85,6 +85,9 @@ function UptrendModule() {
     const [inputWinRate, setInputWinRate] = useState(() => String(getCache('winRate', 90)))
     const chartRef = useRef(null)
     const timeChartRef = useRef(null)
+    const listRef = useRef(null)
+    const [displayCount, setDisplayCount] = useState(50) // 初始显示50条
+    const PAGE_SIZE = 50 // 每次加载50条
 
     // 保存设置到 localStorage
     useEffect(() => {
@@ -203,6 +206,20 @@ function UptrendModule() {
             document.body.style.overflow = ''
         }
     }, [showAllRanking, selectedBucket, selectedSymbol, selectedTimeBucket])
+
+    // 切换筛选条件时重置显示条数
+    useEffect(() => {
+        setDisplayCount(PAGE_SIZE)
+    }, [showAllRanking, selectedBucket, selectedSymbol, selectedTimeBucket, sortBy, sortOrder, filterOngoing])
+
+    // 滚动加载更多
+    const handleListScroll = useCallback((e) => {
+        const { scrollTop, scrollHeight, clientHeight } = e.target
+        // 滚动到底部100px内时加载更多
+        if (scrollHeight - scrollTop - clientHeight < 100) {
+            setDisplayCount(prev => prev + PAGE_SIZE)
+        }
+    }, [])
 
     // 处理保留比率输入（用户输入75表示75%，内部存储0.75）
     const handleKeepRatioChange = (e) => {
@@ -1283,8 +1300,8 @@ function UptrendModule() {
                                     {sortOrder === 'desc' ? '↓' : '↑'}
                                 </button>
                             </div>
-                            <div className="ranking-list">
-                                {rankingData.coins.map((coin, index) => (
+                            <div className="ranking-list" ref={listRef} onScroll={handleListScroll}>
+                                {rankingData.coins.slice(0, displayCount).map((coin, index) => (
                                     <div
                                         key={`${coin.symbol}-${coin.waveStartTime}-${index}`}
                                         className="ranking-item uptrend-item"
@@ -1325,6 +1342,11 @@ function UptrendModule() {
                                 ))}
                                 {rankingData.coins.length === 0 && (
                                     <div className="no-data">暂无数据</div>
+                                )}
+                                {displayCount < rankingData.coins.length && (
+                                    <div className="load-more-hint">
+                                        ↓ 滚动加载更多 ({displayCount}/{rankingData.coins.length})
+                                    </div>
                                 )}
                             </div>
                         </>
