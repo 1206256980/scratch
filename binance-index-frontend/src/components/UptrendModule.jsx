@@ -110,6 +110,19 @@ function UptrendModule() {
         return () => clearInterval(interval)
     }, [fetchData])
 
+    // 侧边栏打开时锁定背景滚动
+    useEffect(() => {
+        const isPanelOpen = showAllRanking || selectedBucket || selectedSymbol || selectedTimeBucket
+        if (isPanelOpen) {
+            document.body.style.overflow = 'hidden'
+        } else {
+            document.body.style.overflow = ''
+        }
+        return () => {
+            document.body.style.overflow = ''
+        }
+    }, [showAllRanking, selectedBucket, selectedSymbol, selectedTimeBucket])
+
     // 处理保留比率输入（用户输入75表示75%，内部存储0.75）
     const handleKeepRatioChange = (e) => {
         setInputKeepRatio(e.target.value)
