@@ -750,6 +750,39 @@ body {
   border-color: var(--accent-primary);
 }
 
+/* 排序类型切换 */
+.sort-type-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  border: 1px solid var(--border-color);
+}
+
+.sort-type-btn {
+  padding: 5px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.sort-type-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+}
+
+.sort-type-btn.active {
+  background: linear-gradient(135deg, #ef4444, #f59e0b);
+  color: white;
+}
+
 .ranking-list {
   flex: 1;
   overflow-y: auto;

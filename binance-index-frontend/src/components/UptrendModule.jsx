@@ -40,6 +40,7 @@ function UptrendModule() {
     const [showAllRanking, setShowAllRanking] = useState(false) // 显示全部排行榜
     const [copiedSymbol, setCopiedSymbol] = useState(null) // 复制提示
     const [sortOrder, setSortOrder] = useState('desc') // 排序方向
+    const [sortBy, setSortBy] = useState('uptrend') // 排序类型: 'uptrend' 或 'startTime'
     const [filterOngoing, setFilterOngoing] = useState(false) // 只看进行中
     const [selectedSymbol, setSelectedSymbol] = useState(null) // 选中的币种（查看详情）
     const chartRef = useRef(null)
@@ -315,9 +316,17 @@ function UptrendModule() {
         if (!coins) return []
         let filtered = filterOngoing ? coins.filter(c => c.ongoing) : coins
         return [...filtered].sort((a, b) => {
-            return sortOrder === 'desc'
-                ? b.uptrendPercent - a.uptrendPercent
-                : a.uptrendPercent - b.uptrendPercent
+            if (sortBy === 'startTime') {
+                // 按波段开始时间排序
+                return sortOrder === 'desc'
+                    ? b.waveStartTime - a.waveStartTime
+                    : a.waveStartTime - b.waveStartTime
+            } else {
+                // 按涨幅排序
+                return sortOrder === 'desc'
+                    ? b.uptrendPercent - a.uptrendPercent
+                    : a.uptrendPercent - b.uptrendPercent
+            }
         })
     }
 
@@ -547,6 +556,22 @@ function UptrendModule() {
                                     />
                                     <span>只看进行中</span>
                                 </label>
+                                <div className="sort-type-toggle">
+                                    <button
+                                        className={`sort-type-btn ${sortBy === 'uptrend' ? 'active' : ''}`}
+                                        onClick={() => setSortBy('uptrend')}
+                                        title="按涨幅排序"
+                                    >
+                                        📈涨幅
+                                    </button>
+                                    <button
+                                        className={`sort-type-btn ${sortBy === 'startTime' ? 'active' : ''}`}
+                                        onClick={() => setSortBy('startTime')}
+                                        title="按波段开始时间排序"
+                                    >
+                                        🕐时间
+                                    </button>
+                                </div>
                                 <button
                                     className="sort-order-btn"
                                     onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
