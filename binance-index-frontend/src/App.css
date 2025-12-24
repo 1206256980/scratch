@@ -1288,7 +1288,7 @@ body {
 
 /* ===== 胜率分析卡片 ===== */
 .win-rate-card {
-  min-width: 140px;
+  min-width: 180px;
 }
 
 .win-rate-content {
@@ -1330,4 +1330,70 @@ body {
   font-size: 0.8rem;
   color: var(--text-secondary);
   white-space: nowrap;
+}
+
+/* ===== 搜索卡片 ===== */
+.search-card {
+  min-width: 160px;
+}
+
+.search-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stat-search-input {
+  width: 90px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.stat-search-input:hover {
+  border-color: #0ea5e9;
+}
+
+.stat-search-input:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+}
+
+.search-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.search-action-btn,
+.search-clear-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search-action-btn:hover {
+  background: #0ea5e9;
+  border-color: #0ea5e9;
+  color: white;
+}
+
+.search-clear-btn:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
 }

@@ -45,33 +45,83 @@ const formatDuration = (startTs, endTs) => {
 }
 
 function UptrendModule() {
-    const [timeBase, setTimeBase] = useState(24) // 默认24小时
-    const [useCustomTime, setUseCustomTime] = useState(false) // 是否使用自定义时间
-    const [startTime, setStartTime] = useState('') // 开始时间
-    const [endTime, setEndTime] = useState('') // 结束时间
-    const [keepRatio, setKeepRatio] = useState(0.75) // 默认0.75（保留75%涨幅）
-    const [inputKeepRatio, setInputKeepRatio] = useState('75') // 输入框值（以%显示）
-    const [noNewHighCandles, setNoNewHighCandles] = useState(6) // 默认6根K线
-    const [inputNoNewHighCandles, setInputNoNewHighCandles] = useState('6')
-    const [minUptrend, setMinUptrend] = useState(4) // 默认4%
-    const [inputMinUptrend, setInputMinUptrend] = useState('4') // 输入框值
+    // 从 localStorage 读取缓存值的工具函数
+    const getCache = (key, defaultValue) => {
+        try {
+            const cached = localStorage.getItem(`uptrend_${key}`)
+            if (cached !== null) {
+                return JSON.parse(cached)
+            }
+        } catch (e) {
+            console.warn(`读取缓存失败: ${key}`, e)
+        }
+        return defaultValue
+    }
+
+    const [timeBase, setTimeBase] = useState(() => getCache('timeBase', 24))
+    const [useCustomTime, setUseCustomTime] = useState(() => getCache('useCustomTime', false))
+    const [startTime, setStartTime] = useState(() => getCache('startTime', ''))
+    const [endTime, setEndTime] = useState(() => getCache('endTime', ''))
+    const [keepRatio, setKeepRatio] = useState(() => getCache('keepRatio', 0.75))
+    const [inputKeepRatio, setInputKeepRatio] = useState(() => String(Math.round(getCache('keepRatio', 0.75) * 100)))
+    const [noNewHighCandles, setNoNewHighCandles] = useState(() => getCache('noNewHighCandles', 6))
+    const [inputNoNewHighCandles, setInputNoNewHighCandles] = useState(() => String(getCache('noNewHighCandles', 6)))
+    const [minUptrend, setMinUptrend] = useState(() => getCache('minUptrend', 4))
+    const [inputMinUptrend, setInputMinUptrend] = useState(() => String(getCache('minUptrend', 4)))
     const [uptrendData, setUptrendData] = useState(null)
     const [loading, setLoading] = useState(false)
-    const [selectedBucket, setSelectedBucket] = useState(null) // 选中的区间
-    const [showAllRanking, setShowAllRanking] = useState(false) // 显示全部排行榜
-    const [copiedSymbol, setCopiedSymbol] = useState(null) // 复制提示
-    const [sortOrder, setSortOrder] = useState('desc') // 排序方向
-    const [sortBy, setSortBy] = useState('uptrend') // 排序类型: 'uptrend' 或 'startTime'
-    const [filterOngoing, setFilterOngoing] = useState(false) // 只看进行中
-    const [selectedSymbol, setSelectedSymbol] = useState(null) // 选中的币种（查看详情）
-    const [searchSymbol, setSearchSymbol] = useState('') // 搜索币种
-    const [timeChartThreshold, setTimeChartThreshold] = useState(10) // 时间图表涨幅阈值，默认10%
-    const [inputTimeChartThreshold, setInputTimeChartThreshold] = useState('10')
-    const [selectedTimeBucket, setSelectedTimeBucket] = useState(null) // 选中的时间桶
-    const [winRate, setWinRate] = useState(90) // 胜率，默认90%
-    const [inputWinRate, setInputWinRate] = useState('90')
+    const [selectedBucket, setSelectedBucket] = useState(null)
+    const [showAllRanking, setShowAllRanking] = useState(false)
+    const [copiedSymbol, setCopiedSymbol] = useState(null)
+    const [sortOrder, setSortOrder] = useState('desc')
+    const [sortBy, setSortBy] = useState('uptrend')
+    const [filterOngoing, setFilterOngoing] = useState(false)
+    const [selectedSymbol, setSelectedSymbol] = useState(null)
+    const [searchSymbol, setSearchSymbol] = useState('')
+    const [timeChartThreshold, setTimeChartThreshold] = useState(() => getCache('timeChartThreshold', 10))
+    const [inputTimeChartThreshold, setInputTimeChartThreshold] = useState(() => String(getCache('timeChartThreshold', 10)))
+    const [selectedTimeBucket, setSelectedTimeBucket] = useState(null)
+    const [winRate, setWinRate] = useState(() => getCache('winRate', 90))
+    const [inputWinRate, setInputWinRate] = useState(() => String(getCache('winRate', 90)))
     const chartRef = useRef(null)
     const timeChartRef = useRef(null)
+
+    // 保存设置到 localStorage
+    useEffect(() => {
+        localStorage.setItem('uptrend_timeBase', JSON.stringify(timeBase))
+    }, [timeBase])
+
+    useEffect(() => {
+        localStorage.setItem('uptrend_useCustomTime', JSON.stringify(useCustomTime))
+    }, [useCustomTime])
+
+    useEffect(() => {
+        if (startTime) localStorage.setItem('uptrend_startTime', JSON.stringify(startTime))
+    }, [startTime])
+
+    useEffect(() => {
+        if (endTime) localStorage.setItem('uptrend_endTime', JSON.stringify(endTime))
+    }, [endTime])
+
+    useEffect(() => {
+        localStorage.setItem('uptrend_keepRatio', JSON.stringify(keepRatio))
+    }, [keepRatio])
+
+    useEffect(() => {
+        localStorage.setItem('uptrend_noNewHighCandles', JSON.stringify(noNewHighCandles))
+    }, [noNewHighCandles])
+
+    useEffect(() => {
+        localStorage.setItem('uptrend_minUptrend', JSON.stringify(minUptrend))
+    }, [minUptrend])
+
+    useEffect(() => {
+        localStorage.setItem('uptrend_timeChartThreshold', JSON.stringify(timeChartThreshold))
+    }, [timeChartThreshold])
+
+    useEffect(() => {
+        localStorage.setItem('uptrend_winRate', JSON.stringify(winRate))
+    }, [winRate])
 
     // 获取数据 (silent: 静默刷新，不显示loading，不重置选择状态)
     const fetchData = useCallback(async (silent = false) => {
@@ -972,6 +1022,38 @@ function UptrendModule() {
                             )}
                         </div>
                     </div>
+                    {/* 搜索框 */}
+                    <div className="stat-item search-card" style={{ borderLeft: '3px solid #0ea5e9' }}>
+                        <span className="icon">🔍</span>
+                        <div className="search-content">
+                            <input
+                                type="text"
+                                className="stat-search-input"
+                                placeholder="搜索币种..."
+                                value={searchSymbol}
+                                onChange={(e) => setSearchSymbol(e.target.value)}
+                                onKeyDown={handleSearchKeyDown}
+                            />
+                            <div className="search-buttons">
+                                <button
+                                    className="search-action-btn"
+                                    onClick={handleSearchSymbol}
+                                    title="搜索"
+                                >
+                                    →
+                                </button>
+                                {searchSymbol && (
+                                    <button
+                                        className="search-clear-btn"
+                                        onClick={() => setSearchSymbol('')}
+                                        title="清除"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -981,26 +1063,6 @@ function UptrendModule() {
                     <div className="section-title">
                         单边涨幅分布
                         <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px' }}>(保留{Math.round(keepRatio * 100)}%涨幅 或 横盘{noNewHighCandles}根K线 视为波段结束)</span>
-
-                        {/* 搜索框 */}
-                        <div className="symbol-search">
-                            <input
-                                type="text"
-                                className="search-input"
-                                placeholder="搜索币种..."
-                                value={searchSymbol}
-                                onChange={(e) => setSearchSymbol(e.target.value)}
-                                onKeyDown={handleSearchKeyDown}
-                                style={{ width: '120px' }}
-                            />
-                            <button
-                                className="search-btn"
-                                onClick={handleSearchSymbol}
-                                title="搜索币种的所有单边波段"
-                            >
-                                🔍
-                            </button>
-                        </div>
 
                         {uptrendData && (
                             <button
