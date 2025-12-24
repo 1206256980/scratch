@@ -1032,6 +1032,59 @@ body {
   cursor: pointer;
 }
 
+/* 币种搜索框 */
+.symbol-search {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.symbol-search .search-input {
+  padding: 5px 10px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.symbol-search .search-input:hover {
+  border-color: var(--danger);
+}
+
+.symbol-search .search-input:focus {
+  outline: none;
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.symbol-search .search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ef4444, #f59e0b);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
 /* 单边涨幅排行项目样式 */
 .uptrend-item {
   display: grid;

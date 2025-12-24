@@ -43,6 +43,7 @@ function UptrendModule() {
     const [sortBy, setSortBy] = useState('uptrend') // 排序类型: 'uptrend' 或 'startTime'
     const [filterOngoing, setFilterOngoing] = useState(false) // 只看进行中
     const [selectedSymbol, setSelectedSymbol] = useState(null) // 选中的币种（查看详情）
+    const [searchSymbol, setSearchSymbol] = useState('') // 搜索币种
     const chartRef = useRef(null)
 
     // 获取数据
@@ -169,6 +170,33 @@ function UptrendModule() {
         setSelectedBucket(null)
         setShowAllRanking(false)
         setSelectedSymbol(null)
+    }
+
+    // 搜索币种
+    const handleSearchSymbol = () => {
+        const keyword = searchSymbol.trim().toUpperCase()
+        if (!keyword) return
+
+        if (uptrendData?.allCoinsRanking) {
+            // 模糊匹配：搜索包含关键词的币种
+            const matches = uptrendData.allCoinsRanking.filter(c => c.symbol.includes(keyword))
+
+            if (matches.length > 0) {
+                // 优先精确匹配，否则取第一个匹配结果
+                const exactMatch = matches.find(c => c.symbol === keyword || c.symbol === keyword + 'USDT')
+                const targetSymbol = exactMatch ? exactMatch.symbol : matches[0].symbol
+
+                setSelectedSymbol(targetSymbol)
+                setSelectedBucket(null)
+                setShowAllRanking(false)
+            } else {
+                alert(`未找到包含 "${keyword}" 的币种`)
+            }
+        }
+    }
+
+    const handleSearchKeyDown = (e) => {
+        if (e.key === 'Enter') handleSearchSymbol()
     }
 
     // 图表点击事件
@@ -496,6 +524,27 @@ function UptrendModule() {
                     <div className="section-title">
                         单边涨幅分布
                         <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px' }}>(保留{Math.round(keepRatio * 100)}%涨幅 或 横盘{noNewHighCandles}根K线 视为波段结束)</span>
+
+                        {/* 搜索框 */}
+                        <div className="symbol-search">
+                            <input
+                                type="text"
+                                className="search-input"
+                                placeholder="搜索币种..."
+                                value={searchSymbol}
+                                onChange={(e) => setSearchSymbol(e.target.value)}
+                                onKeyDown={handleSearchKeyDown}
+                                style={{ width: '120px' }}
+                            />
+                            <button
+                                className="search-btn"
+                                onClick={handleSearchSymbol}
+                                title="搜索币种的所有单边波段"
+                            >
+                                🔍
+                            </button>
+                        </div>
+
                         {uptrendData && (
                             <button
                                 className="all-ranking-btn"
