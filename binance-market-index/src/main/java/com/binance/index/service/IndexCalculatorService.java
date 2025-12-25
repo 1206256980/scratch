@@ -44,7 +44,7 @@ public class IndexCalculatorService {
     // 缓存各币种的基准价格（回补起始时间的价格）
     private Map<String, Double> basePrices = new HashMap<>();
     private LocalDateTime basePriceTime;
-    
+
     // 单边上行数据缓存（5分钟过期，最多缓存10个不同参数的结果）
     private final Cache<String, UptrendData> uptrendCache = Caffeine.newBuilder()
             .maximumSize(10)
@@ -95,7 +95,7 @@ public class IndexCalculatorService {
     public boolean isBackfillInProgress() {
         return backfillInProgress;
     }
-    
+
     /**
      * 清空单边上行缓存（在新数据采集后调用）
      */
@@ -277,7 +277,7 @@ public class IndexCalculatorService {
                 .collect(Collectors.toList());
         jdbcCoinPriceRepository.batchInsert(coinPrices);
         log.debug("保存 {} 个币种价格", coinPrices.size());
-        
+
         // 新数据采集后清空单边上行缓存
         invalidateUptrendCache();
 
@@ -929,14 +929,14 @@ public class IndexCalculatorService {
      * 与修复接口 repairMissingPriceData 类似，但只返回缺漏信息不做任何修改
      * 
      * @param startTime 开始时间
-     * @param endTime 结束时间
+     * @param endTime   结束时间
      * @return 缺漏时间点统计（按币种）
      */
     public Map<String, Object> getMissingTimestamps(LocalDateTime startTime, LocalDateTime endTime) {
         Map<String, Object> result = new HashMap<>();
-        
+
         log.info("查询各币种缺漏时间点: {} ~ {}", startTime, endTime);
-        
+
         // 1. 生成应该存在的所有时间点
         List<LocalDateTime> expectedTimestamps = new ArrayList<>();
         LocalDateTime checkTime = alignToFiveMinutes(startTime);
@@ -945,15 +945,15 @@ public class IndexCalculatorService {
             checkTime = checkTime.plusMinutes(5);
         }
         int expectedPerCoin = expectedTimestamps.size();
-        
+
         // 2. 获取所有活跃币种
         List<String> activeSymbols = binanceApiService.getAllUsdtSymbols();
-        
+
         // 3. 检查每个币种的缺漏情况
         List<Map<String, Object>> symbolsMissing = new ArrayList<>();
         int totalMissing = 0;
         int symbolsWithMissing = 0;
-        
+
         for (String symbol : activeSymbols) {
             // 获取该币种已有的时间戳
             List<CoinPrice> prices = coinPriceRepository.findBySymbolInRangeOrderByTime(
@@ -961,7 +961,7 @@ public class IndexCalculatorService {
             Set<LocalDateTime> existingSet = prices.stream()
                     .map(p -> p.getTimestamp().truncatedTo(java.time.temporal.ChronoUnit.MINUTES))
                     .collect(Collectors.toSet());
-            
+
             // 找出缺漏的时间点
             List<String> missing = new ArrayList<>();
             for (LocalDateTime ts : expectedTimestamps) {
@@ -969,7 +969,7 @@ public class IndexCalculatorService {
                     missing.add(ts.toString());
                 }
             }
-            
+
             if (!missing.isEmpty()) {
                 Map<String, Object> symbolInfo = new HashMap<>();
                 symbolInfo.put("symbol", symbol);
@@ -981,17 +981,17 @@ public class IndexCalculatorService {
                 symbolsWithMissing++;
             }
         }
-        
+
         // 4. 返回结果
         result.put("totalSymbols", activeSymbols.size());
         result.put("expectedPerCoin", expectedPerCoin);
         result.put("symbolsWithMissing", symbolsWithMissing);
         result.put("totalMissingRecords", totalMissing);
         result.put("details", symbolsMissing.size() <= 50 ? symbolsMissing : symbolsMissing.subList(0, 50)); // 最多显示50个币种
-        
-        log.info("查询完成: {}个币种, {}个有缺漏, 共缺{}条记录", 
+
+        log.info("查询完成: {}个币种, {}个有缺漏, 共缺{}条记录",
                 activeSymbols.size(), symbolsWithMissing, totalMissing);
-        
+
         return result;
     }
 
@@ -1033,22 +1033,24 @@ public class IndexCalculatorService {
             checkedSymbols++;
 
             // 直接查询该币种在时间范围内已有的数据时间戳
-            List<CoinPrice> existingPrices = coinPriceRepository.findBySymbolInRangeOrderByTime(symbol, actualStartTime, actualEndTime);
-            
+            List<CoinPrice> existingPrices = coinPriceRepository.findBySymbolInRangeOrderByTime(symbol, actualStartTime,
+                    actualEndTime);
+
             // 调试：打印前3个币种的现有时间戳
             if (checkedSymbols <= 3) {
                 log.info("[调试] 币种 {} 在范围内有 {} 条数据", symbol, existingPrices.size());
                 if (!existingPrices.isEmpty()) {
-                    log.info("[调试] 币种 {} 现有时间戳: {}", symbol, 
-                            existingPrices.stream().limit(5).map(p -> p.getTimestamp().toString()).collect(Collectors.joining(", ")));
+                    log.info("[调试] 币种 {} 现有时间戳: {}", symbol,
+                            existingPrices.stream().limit(5).map(p -> p.getTimestamp().toString())
+                                    .collect(Collectors.joining(", ")));
                 }
             }
-            
+
             // 使用 truncatedTo(MINUTES) 去除秒和纳秒，只比较到分钟
             Set<LocalDateTime> existingSet = existingPrices.stream()
                     .map(p -> p.getTimestamp().truncatedTo(java.time.temporal.ChronoUnit.MINUTES))
                     .collect(Collectors.toSet());
-            
+
             // 清空引用帮助 GC
             existingPrices = null;
 
@@ -1066,10 +1068,10 @@ public class IndexCalculatorService {
             if (missingTimestamps.isEmpty()) {
                 continue;
             }
-            
+
             // 调试：打印缺失的时间戳
             if (checkedSymbols <= 3) { // 只打印前3个币种
-                log.info("[调试] 币种 {} 缺失 {} 个时间点: {}", symbol, missingTimestamps.size(), 
+                log.info("[调试] 币种 {} 缺失 {} 个时间点: {}", symbol, missingTimestamps.size(),
                         missingTimestamps.size() <= 10 ? missingTimestamps : missingTimestamps.subList(0, 10) + "...");
             }
 
@@ -1087,18 +1089,18 @@ public class IndexCalculatorService {
                     if (endMs <= startMs) {
                         endMs = startMs + 5 * 60 * 1000; // 加5分钟
                     }
-                    
+
                     // 调试日志
                     if (checkedSymbols <= 3) {
-                        log.info("[调试] 币种 {} 请求API: {} -> {}", symbol, 
+                        log.info("[调试] 币种 {} 请求API: {} -> {}", symbol,
                                 LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(startMs), ZoneId.of("UTC")),
                                 LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(endMs), ZoneId.of("UTC")));
                     }
-                    
+
                     // 从币安API获取缺失的K线数据
                     List<KlineData> klines = binanceApiService.getKlinesWithPagination(
                             symbol, "5m", startMs, endMs, 500);
-                    
+
                     // 调试日志
                     if (checkedSymbols <= 3) {
                         log.info("[调试] 币种 {} API返回 {} 条K线", symbol, klines.size());
@@ -1259,7 +1261,7 @@ public class IndexCalculatorService {
 
         // 调试：打印关键时间点
         LocalDateTime actualBaseTime = basePriceList.get(0).getTimestamp();
-        
+
         // 转换为Map便于查找
         // 当前价格使用收盘价
         Map<String, Double> currentPriceMap = latestPrices.stream()
@@ -1660,59 +1662,59 @@ public class IndexCalculatorService {
         // 对齐时间到5分钟边界：统一向下取整
         LocalDateTime alignedStart = alignToFiveMinutes(startTime);
         LocalDateTime alignedEnd = alignToFiveMinutes(endTime);
-        
+
         // 生成缓存 key（包含对齐后的时间和所有参数）
-        String cacheKey = String.format("%s_%s_%.2f_%d_%.2f", 
+        String cacheKey = String.format("%s_%s_%.2f_%d_%.2f",
                 alignedStart.toString(), alignedEnd.toString(), keepRatio, noNewHighCandles, minUptrend);
-        
+
         // 检查缓存
         UptrendData cachedData = uptrendCache.getIfPresent(cacheKey);
         if (cachedData != null) {
             log.info("命中缓存: {}", cacheKey);
             return cachedData;
         }
-        
+
         log.info("计算单边涨幅分布: {} -> {} (对齐后), 保留比率: {}, 横盘K线数: {}, 最小涨幅: {}%", alignedStart, alignedEnd, keepRatio,
                 noNewHighCandles, minUptrend);
 
         // 【优化】分批查询，避免一次性加载过多数据到内存
         long queryStart = System.currentTimeMillis();
-        
+
         // Step 1: 先获取时间范围内所有币种列表（只返回字符串，内存占用小）
         List<String> allSymbols = coinPriceRepository.findDistinctSymbolsInRange(alignedStart, alignedEnd);
         if (allSymbols.isEmpty()) {
             log.warn("时间范围内没有数据");
             return null;
         }
-        
+
         log.info("找到 {} 个币种，开始一次性查询处理...", allSymbols.size());
-        
+
         // 一次性加载所有数据（牺牲内存换取最快速度）
         List<CoinPrice> allPrices = coinPriceRepository.findAllInRangeOrderBySymbolAndTime(alignedStart, alignedEnd);
-        
+
         if (allPrices.isEmpty()) {
             log.warn("时间范围内没有数据");
             return null;
         }
-        
+
         // 按币种分组
         Map<String, List<CoinPrice>> pricesBySymbol = allPrices.stream()
                 .collect(java.util.stream.Collectors.groupingBy(CoinPrice::getSymbol));
-        
+
         log.info("查询完成，共 {} 条数据，{} 个币种，开始并行计算...", allPrices.size(), pricesBySymbol.size());
-        
+
         // 清空原始列表引用，帮助 GC
         allPrices = null;
-        
+
         // 使用并行流处理
         List<UptrendData.CoinUptrend> allWaves = pricesBySymbol.entrySet().parallelStream()
                 .flatMap(entry -> calculateSymbolAllWavesFromData(entry.getKey(), entry.getValue(), keepRatio,
                         noNewHighCandles, minUptrend).stream())
                 .collect(java.util.stream.Collectors.toList());
-        
+
         // 清空分组数据
         pricesBySymbol = null;
-        
+
         long queryTime = System.currentTimeMillis() - queryStart;
         log.info("一次性查询处理完成，耗时 {}ms，共 {} 个波段", queryTime, allWaves.size());
 
@@ -1800,11 +1802,11 @@ public class IndexCalculatorService {
 
         log.info("单边涨幅分布计算完成: 总波段数={}, 进行中={}, 平均涨幅={}%, 最大涨幅={}%",
                 allWaves.size(), ongoingCount, data.getAvgUptrend(), data.getMaxUptrend());
-        
+
         // 存入缓存
         uptrendCache.put(cacheKey, data);
         log.debug("结果已缓存: {}", cacheKey);
-        
+
         return data;
     }
 
@@ -1829,8 +1831,9 @@ public class IndexCalculatorService {
         List<UptrendData.CoinUptrend> waves = new ArrayList<>();
 
         // 波段跟踪变量
-        double waveStartPrice = 0; // 波段起点价格
+        double waveStartPrice = 0; // 波段起点价格（使用低价作为真正起点）
         double wavePeakPrice = 0; // 波段最高价
+        double waveLowestLow = 0; // 波段期间的历史最低价（用于判断是否真正破位）
         LocalDateTime waveStartTime = null;
         LocalDateTime wavePeakTime = null;
         int candlesSinceNewHigh = 0; // 连续未创新高的K线数
@@ -1840,13 +1843,15 @@ public class IndexCalculatorService {
 
         for (CoinPrice price : prices) {
             double highPrice = price.getHighPrice() != null ? price.getHighPrice() : price.getPrice();
+            double lowPrice = price.getLowPrice() != null ? price.getLowPrice() : price.getPrice();
             double closePrice = price.getPrice();
             LocalDateTime timestamp = price.getTimestamp();
 
             if (!inWave) {
-                // 开始新波段
-                waveStartPrice = closePrice;
+                // 开始新波段：使用低价作为起点
+                waveStartPrice = lowPrice;
                 waveStartTime = timestamp;
+                waveLowestLow = lowPrice;
                 wavePeakPrice = highPrice;
                 wavePeakTime = timestamp;
                 candlesSinceNewHigh = 0;
@@ -1863,10 +1868,13 @@ public class IndexCalculatorService {
                     candlesSinceNewHigh++; // 未创新高，计数+1
                 }
 
-                // 检查是否创新低（如果创新低，重置波段起点）
-                if (closePrice < waveStartPrice) {
-                    waveStartPrice = closePrice;
+                // 检查是否创新低（使用低价判断是否真正破位）
+                // 只有当K线低价跌破波段历史最低价时，才重置波段起点
+                if (lowPrice < waveLowestLow) {
+                    // 真正破位，重置波段起点
+                    waveStartPrice = lowPrice;
                     waveStartTime = timestamp;
+                    waveLowestLow = lowPrice;
                     wavePeakPrice = highPrice;
                     wavePeakTime = timestamp;
                     candlesSinceNewHigh = 0;
@@ -1980,8 +1988,9 @@ public class IndexCalculatorService {
         List<UptrendData.CoinUptrend> waves = new ArrayList<>();
 
         // 波段跟踪变量
-        double waveStartPrice = 0; // 波段起点价格
+        double waveStartPrice = 0; // 波段起点价格（使用低价作为真正起点）
         double wavePeakPrice = 0; // 波段最高价
+        double waveLowestLow = 0; // 波段期间的历史最低价（用于判断是否真正破位）
         LocalDateTime waveStartTime = null;
         LocalDateTime wavePeakTime = null;
         int candlesSinceNewHigh = 0; // 连续未创新高的K线数
@@ -1991,13 +2000,15 @@ public class IndexCalculatorService {
 
         for (CoinPrice price : prices) {
             double highPrice = price.getHighPrice() != null ? price.getHighPrice() : price.getPrice();
+            double lowPrice = price.getLowPrice() != null ? price.getLowPrice() : price.getPrice();
             double closePrice = price.getPrice();
             LocalDateTime timestamp = price.getTimestamp();
 
             if (!inWave) {
-                // 开始新波段
-                waveStartPrice = closePrice;
+                // 开始新波段：使用低价作为起点
+                waveStartPrice = lowPrice;
                 waveStartTime = timestamp;
+                waveLowestLow = lowPrice;
                 wavePeakPrice = highPrice;
                 wavePeakTime = timestamp;
                 candlesSinceNewHigh = 0;
@@ -2014,10 +2025,13 @@ public class IndexCalculatorService {
                     candlesSinceNewHigh++; // 未创新高，计数+1
                 }
 
-                // 检查是否创新低（如果创新低，重置波段起点）
-                if (closePrice < waveStartPrice) {
-                    waveStartPrice = closePrice;
+                // 检查是否创新低（使用低价判断是否真正破位）
+                // 只有当K线低价跌破波段历史最低价时，才重置波段起点
+                if (lowPrice < waveLowestLow) {
+                    // 真正破位，重置波段起点
+                    waveStartPrice = lowPrice;
                     waveStartTime = timestamp;
+                    waveLowestLow = lowPrice;
                     wavePeakPrice = highPrice;
                     wavePeakTime = timestamp;
                     candlesSinceNewHigh = 0;
@@ -2119,7 +2133,7 @@ public class IndexCalculatorService {
      * 4. limit=99：降低 API 权重消耗（权重 1 vs 原来的 5）
      * 5. 每阶段完成后立即计算指数
      * 
-     * @param days 回补天数
+     * @param days        回补天数
      * @param concurrency 并发数（建议 5-10）
      */
     public void backfillHistoricalDataV2(int days, int concurrency) {
@@ -2163,7 +2177,8 @@ public class IndexCalculatorService {
         log.info("========== 第一阶段：主回补 ==========");
         log.info("时间范围: {} -> {} (固定)", phase1StartTime, phase1EndTime);
 
-        Map<String, Double> phase1BasePrices = backfillPhaseV2(phase1StartTime, phase1EndTime, concurrency, existingBasePrices.isEmpty());
+        Map<String, Double> phase1BasePrices = backfillPhaseV2(phase1StartTime, phase1EndTime, concurrency,
+                existingBasePrices.isEmpty());
 
         // 更新基准价格（如果是首次运行）
         if (existingBasePrices.isEmpty() && !phase1BasePrices.isEmpty()) {
@@ -2212,7 +2227,7 @@ public class IndexCalculatorService {
         }
 
         long totalElapsed = System.currentTimeMillis() - totalStartTime;
-        log.info("========== V2 回补全部完成！总耗时: {}ms ({}分钟) ==========", 
+        log.info("========== V2 回补全部完成！总耗时: {}ms ({}分钟) ==========",
                 totalElapsed, totalElapsed / 60000);
     }
 
@@ -2222,15 +2237,15 @@ public class IndexCalculatorService {
      * 关键改进：不使用 getKlinesWithPagination，而是自己控制每次 API 调用后立即保存
      * 这样 DB 操作的耗时成为自然的 API 间隔，避免被限流
      * 
-     * @param startTime 开始时间
-     * @param endTime 结束时间
-     * @param concurrency 并发数
+     * @param startTime         开始时间
+     * @param endTime           结束时间
+     * @param concurrency       并发数
      * @param collectBasePrices 是否收集基准价格（首次运行时需要）
      * @return 收集到的基准价格（每个币种最早的 openPrice）
      */
-    private Map<String, Double> backfillPhaseV2(LocalDateTime startTime, LocalDateTime endTime, 
+    private Map<String, Double> backfillPhaseV2(LocalDateTime startTime, LocalDateTime endTime,
             int concurrency, boolean collectBasePrices) {
-        
+
         List<String> symbols = binanceApiService.getAllUsdtSymbols();
         if (symbols.isEmpty()) {
             log.warn("无法获取交易对列表");
@@ -2261,34 +2276,34 @@ public class IndexCalculatorService {
                 .map(symbol -> CompletableFuture.runAsync(() -> {
                     try {
                         semaphore.acquire();
-                        
+
                         // 分批获取并立即保存（方案B核心逻辑）
                         long currentStart = startMs;
                         boolean isFirstBatch = true;
-                        
+
                         while (currentStart <= endMs) {
                             // 检查是否被限流
                             if (binanceApiService.isRateLimited()) {
                                 log.warn("检测到限流，停止回补 {}", symbol);
                                 break;
                             }
-                            
+
                             // 获取一批 K 线（limit=500，权重5）
                             List<KlineData> batch = binanceApiService.getKlines(
                                     symbol, "5m", currentStart, endMs, 500);
-                            
+
                             totalApiCalls.incrementAndGet();
-                            
+
                             if (batch.isEmpty()) {
                                 break;
                             }
-                            
+
                             // 收集基准价格（使用第一批的第一条）
                             if (collectBasePrices && isFirstBatch && !batch.isEmpty()) {
                                 collectedBasePrices.putIfAbsent(symbol, batch.get(0).getOpenPrice());
                                 isFirstBatch = false;
                             }
-                            
+
                             // 立即过滤并保存这一批（方案B：每次API调用后立即保存）
                             List<CoinPrice> pricesToSave = new ArrayList<>();
                             for (KlineData kline : batch) {
@@ -2298,16 +2313,16 @@ public class IndexCalculatorService {
                                             kline.getSymbol(), timestamp,
                                             kline.getOpenPrice(), kline.getHighPrice(),
                                             kline.getLowPrice(), kline.getClosePrice(),
-                                            kline.getVolume()));  // 成交额
+                                            kline.getVolume())); // 成交额
                                 }
                             }
-                            
+
                             // 立即保存
                             if (!pricesToSave.isEmpty()) {
                                 jdbcCoinPriceRepository.batchInsert(pricesToSave);
                                 totalSaved.addAndGet(pricesToSave.size());
                             }
-                            
+
                             // 使用配置的请求间隔，确保不超过速率限制
                             long intervalMs = binanceApiService.getRequestIntervalMs();
                             if (intervalMs > 0) {
@@ -2318,7 +2333,7 @@ public class IndexCalculatorService {
                                     break;
                                 }
                             }
-                            
+
                             // 计算下一批的起始时间
                             KlineData lastKline = batch.get(batch.size() - 1);
                             long lastTime = lastKline.getTimestamp()
@@ -2331,7 +2346,7 @@ public class IndexCalculatorService {
                         int done = completed.incrementAndGet();
                         if (done % 50 == 0 || done == symbols.size()) {
                             long elapsed = System.currentTimeMillis() - phaseStartTime;
-                            log.info("回补进度: {}/{} (API调用:{}, 已保存:{}条) 耗时:{}s", 
+                            log.info("回补进度: {}/{} (API调用:{}, 已保存:{}条) 耗时:{}s",
                                     done, symbols.size(), totalApiCalls.get(), totalSaved.get(), elapsed / 1000);
                         }
 
@@ -2359,7 +2374,8 @@ public class IndexCalculatorService {
 
         long phaseElapsed = System.currentTimeMillis() - phaseStartTime;
         log.info("本阶段完成: 成功={}, 跳过={}, 失败={}, API调用={}, 保存={}条, 耗时={}s",
-                completed.get(), skipped.get(), failed.get(), totalApiCalls.get(), totalSaved.get(), phaseElapsed / 1000);
+                completed.get(), skipped.get(), failed.get(), totalApiCalls.get(), totalSaved.get(),
+                phaseElapsed / 1000);
 
         return collectedBasePrices;
     }
@@ -2368,7 +2384,7 @@ public class IndexCalculatorService {
      * 计算并保存指定时间范围内的所有指数
      * 
      * @param startTime 开始时间
-     * @param endTime 结束时间
+     * @param endTime   结束时间
      */
     private void calculateAndSaveIndexesForRange(LocalDateTime startTime, LocalDateTime endTime) {
         // 批量查询已存在的指数时间戳
@@ -2405,7 +2421,7 @@ public class IndexCalculatorService {
                 }
 
                 double changePercent = (price.getPrice() - basePrice) / basePrice * 100;
-                
+
                 // 累加成交额
                 if (price.getVolume() != null) {
                     totalVolume += price.getVolume();
