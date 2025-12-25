@@ -1008,9 +1008,28 @@ public class IndexCalculatorService {
 
             for (long[] range : missingRanges) {
                 try {
+                    // 修正：如果开始和结束时间相同，扩展结束时间以确保能获取到K线
+                    long startMs = range[0];
+                    long endMs = range[1];
+                    if (endMs <= startMs) {
+                        endMs = startMs + 5 * 60 * 1000; // 加5分钟
+                    }
+                    
+                    // 调试日志
+                    if (checkedSymbols <= 3) {
+                        log.info("[调试] 币种 {} 请求API: {} -> {}", symbol, 
+                                LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(startMs), ZoneId.of("UTC")),
+                                LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(endMs), ZoneId.of("UTC")));
+                    }
+                    
                     // 从币安API获取缺失的K线数据
                     List<KlineData> klines = binanceApiService.getKlinesWithPagination(
-                            symbol, "5m", range[0], range[1], 500);
+                            symbol, "5m", startMs, endMs, 500);
+                    
+                    // 调试日志
+                    if (checkedSymbols <= 3) {
+                        log.info("[调试] 币种 {} API返回 {} 条K线", symbol, klines.size());
+                    }
 
                     if (!klines.isEmpty()) {
                         // 保存到数据库
