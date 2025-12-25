@@ -961,8 +961,19 @@ public class IndexCalculatorService {
 
             // 直接查询该币种在时间范围内已有的数据时间戳
             List<CoinPrice> existingPrices = coinPriceRepository.findBySymbolInRangeOrderByTime(symbol, actualStartTime, actualEndTime);
+            
+            // 调试：打印前3个币种的现有时间戳
+            if (checkedSymbols <= 3) {
+                log.info("[调试] 币种 {} 在范围内有 {} 条数据", symbol, existingPrices.size());
+                if (!existingPrices.isEmpty()) {
+                    log.info("[调试] 币种 {} 现有时间戳: {}", symbol, 
+                            existingPrices.stream().limit(5).map(p -> p.getTimestamp().toString()).collect(Collectors.joining(", ")));
+                }
+            }
+            
+            // 使用 truncatedTo(MINUTES) 去除秒和纳秒，只比较到分钟
             Set<LocalDateTime> existingSet = existingPrices.stream()
-                    .map(CoinPrice::getTimestamp)
+                    .map(p -> p.getTimestamp().truncatedTo(java.time.temporal.ChronoUnit.MINUTES))
                     .collect(Collectors.toSet());
             
             // 清空引用帮助 GC
@@ -981,6 +992,12 @@ public class IndexCalculatorService {
 
             if (missingTimestamps.isEmpty()) {
                 continue;
+            }
+            
+            // 调试：打印缺失的时间戳
+            if (checkedSymbols <= 3) { // 只打印前3个币种
+                log.info("[调试] 币种 {} 缺失 {} 个时间点: {}", symbol, missingTimestamps.size(), 
+                        missingTimestamps.size() <= 10 ? missingTimestamps : missingTimestamps.subList(0, 10) + "...");
             }
 
             // 找出连续的缺失时间段
