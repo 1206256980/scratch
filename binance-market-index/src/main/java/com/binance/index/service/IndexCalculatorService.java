@@ -939,21 +939,16 @@ public class IndexCalculatorService {
         for (String symbol : activeSymbols) {
             checkedSymbols++;
 
-            // 获取该币种在时间范围内已有的所有时间戳
-            List<LocalDateTime> existingTimestamps = coinPriceRepository
-                    .findAllDistinctTimestampsBetween(actualStartTime, actualEndTime)
-                    .stream()
-                    .filter(ts -> {
-                        // 检查该时间点是否有这个币种的数据
-                        return coinPriceRepository.findBySymbolInRangeOrderByTime(symbol, ts, ts).size() > 0;
-                    })
-                    .collect(Collectors.toList());
-
-            // 计算期望的时间点数量
-            long expectedCount = java.time.temporal.ChronoUnit.MINUTES.between(actualStartTime, actualEndTime) / 5;
+            // 直接查询该币种在时间范围内已有的数据时间戳
+            List<CoinPrice> existingPrices = coinPriceRepository.findBySymbolInRangeOrderByTime(symbol, actualStartTime, actualEndTime);
+            Set<LocalDateTime> existingSet = existingPrices.stream()
+                    .map(CoinPrice::getTimestamp)
+                    .collect(Collectors.toSet());
+            
+            // 清空引用帮助 GC
+            existingPrices = null;
 
             // 找出缺失的时间段
-            Set<LocalDateTime> existingSet = new HashSet<>(existingTimestamps);
             List<LocalDateTime> missingTimestamps = new ArrayList<>();
 
             LocalDateTime checkTime = alignToFiveMinutes(actualStartTime);

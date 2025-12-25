@@ -527,15 +527,21 @@ public class IndexController {
         }
 
         try {
-            // 解析时间参数
+            // 解析时间参数（按东八区解析，转换为 UTC）
             java.time.LocalDateTime startTime = null;
             java.time.LocalDateTime endTime = null;
+            java.time.ZoneId beijingZone = java.time.ZoneId.of("Asia/Shanghai");
+            java.time.ZoneId utcZone = java.time.ZoneId.of("UTC");
             
             if (start != null && !start.isEmpty()) {
-                startTime = parseDateTime(start);
+                java.time.LocalDateTime beijingTime = parseDateTime(start);
+                // 东八区转 UTC（减8小时）
+                startTime = beijingTime.atZone(beijingZone).withZoneSameInstant(utcZone).toLocalDateTime();
             }
             if (end != null && !end.isEmpty()) {
-                endTime = parseDateTime(end);
+                java.time.LocalDateTime beijingTime = parseDateTime(end);
+                // 东八区转 UTC（减8小时）
+                endTime = beijingTime.atZone(beijingZone).withZoneSameInstant(utcZone).toLocalDateTime();
             }
             
             Map<String, Object> result = indexCalculatorService.repairMissingPriceData(startTime, endTime, days);
