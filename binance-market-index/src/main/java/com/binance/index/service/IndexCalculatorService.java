@@ -2298,7 +2298,7 @@ public class IndexCalculatorService {
                                             kline.getSymbol(), timestamp,
                                             kline.getOpenPrice(), kline.getHighPrice(),
                                             kline.getLowPrice(), kline.getClosePrice(),
-                                            kline.getQuoteVolume()));  // 成交额
+                                            kline.getVolume()));  // 成交额
                                 }
                             }
                             
