@@ -24,7 +24,9 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Service
@@ -2032,5 +2034,297 @@ public class IndexCalculatorService {
         }
 
         return waves;
+    }
+
+    // ==================== V2 优化版本：两阶段并发回补 ====================
+
+    /**
+     * 优化版历史数据回补（V2）
+     * 
+     * 主要优化：
+     * 1. 两阶段回补：第一阶段用固定结束时间，第二阶段补充期间新增数据
+     * 2. 并发获取：使用 Semaphore 控制并发数
+     * 3. 立即保存：每个币种获取后立即保存到数据库（DB 耗时作为自然间隔）
+     * 4. limit=99：降低 API 权重消耗（权重 1 vs 原来的 5）
+     * 5. 每阶段完成后立即计算指数
+     * 
+     * @param days 回补天数
+     * @param concurrency 并发数（建议 5-10）
+     */
+    public void backfillHistoricalDataV2(int days, int concurrency) {
+        log.info("========== 开始 V2 优化版回补（{}天，并发数{}）==========", days, concurrency);
+        long totalStartTime = System.currentTimeMillis();
+
+        // 1. 从数据库加载基准价格
+        List<BasePrice> existingBasePrices = basePriceRepository.findAll();
+        if (!existingBasePrices.isEmpty()) {
+            basePrices = existingBasePrices.stream()
+                    .collect(Collectors.toMap(BasePrice::getSymbol, BasePrice::getPrice, (a, b) -> a));
+            basePriceTime = existingBasePrices.get(0).getCreatedAt();
+            log.info("从数据库加载基准价格成功，共 {} 个币种", basePrices.size());
+        } else {
+            log.info("数据库中没有基准价格，将从历史数据初始化");
+        }
+
+        // 2. 查询数据库最晚时间点（用于增量回补判断）
+        LocalDateTime dbLatest = coinPriceRepository.findLatestTimestamp();
+
+        // 3. 计算第一阶段的时间范围（固定结束时间，所有币种共用）
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
+        LocalDateTime phase1EndTime = alignToFiveMinutes(now).minusMinutes(5); // 最新闭合K线
+        LocalDateTime phase1StartTime;
+
+        if (dbLatest == null) {
+            // 数据库为空，回补 N 天
+            phase1StartTime = phase1EndTime.minusDays(days);
+            log.info("数据库为空，全量回补 {} 天", days);
+        } else if (!dbLatest.isBefore(phase1EndTime)) {
+            // 数据库已是最新，跳过回补
+            log.info("数据库已是最新（dbLatest={}, latestClosed={}），跳过API回补", dbLatest, phase1EndTime);
+            return;
+        } else {
+            // 增量回补：从 dbLatest + 5min 开始
+            phase1StartTime = dbLatest.plusMinutes(5);
+            log.info("增量回补模式：从 {} 到 {} (dbLatest={})", phase1StartTime, phase1EndTime, dbLatest);
+        }
+
+        // ==================== 第一阶段：主回补 ====================
+        log.info("========== 第一阶段：主回补 ==========");
+        log.info("时间范围: {} -> {} (固定)", phase1StartTime, phase1EndTime);
+
+        Map<String, Double> phase1BasePrices = backfillPhaseV2(phase1StartTime, phase1EndTime, concurrency, existingBasePrices.isEmpty());
+
+        // 更新基准价格（如果是首次运行）
+        if (existingBasePrices.isEmpty() && !phase1BasePrices.isEmpty()) {
+            basePrices = new HashMap<>(phase1BasePrices);
+            basePriceTime = LocalDateTime.now();
+            List<BasePrice> basePriceList = phase1BasePrices.entrySet().stream()
+                    .map(e -> new BasePrice(e.getKey(), e.getValue()))
+                    .collect(Collectors.toList());
+            basePriceRepository.saveAll(basePriceList);
+            log.info("基准价格已初始化并保存，共 {} 个币种", basePriceList.size());
+        } else if (!existingBasePrices.isEmpty() && !phase1BasePrices.isEmpty()) {
+            // 检查是否有新币需要添加
+            Set<String> newSymbols = new HashSet<>(phase1BasePrices.keySet());
+            newSymbols.removeAll(basePrices.keySet());
+            if (!newSymbols.isEmpty()) {
+                for (String symbol : newSymbols) {
+                    basePrices.put(symbol, phase1BasePrices.get(symbol));
+                }
+                List<BasePrice> newBasePriceList = newSymbols.stream()
+                        .map(s -> new BasePrice(s, phase1BasePrices.get(s)))
+                        .collect(Collectors.toList());
+                basePriceRepository.saveAll(newBasePriceList);
+                log.info("新币基准价格已保存: {} 个", newSymbols.size());
+            }
+        }
+
+        // 第一阶段：计算指数
+        log.info("第一阶段：计算指数...");
+        calculateAndSaveIndexesForRange(phase1StartTime, phase1EndTime);
+
+        // ==================== 第二阶段：增量回补 ====================
+        log.info("========== 第二阶段：增量回补 ==========");
+
+        LocalDateTime phase2StartTime = phase1EndTime.plusMinutes(5);
+        LocalDateTime phase2EndTime = alignToFiveMinutes(LocalDateTime.now(java.time.ZoneOffset.UTC)).minusMinutes(5);
+
+        if (!phase2StartTime.isAfter(phase2EndTime)) {
+            log.info("增量范围: {} -> {}", phase2StartTime, phase2EndTime);
+            backfillPhaseV2(phase2StartTime, phase2EndTime, concurrency, false);
+
+            // 第二阶段：计算指数
+            log.info("第二阶段：计算指数...");
+            calculateAndSaveIndexesForRange(phase2StartTime, phase2EndTime);
+        } else {
+            log.info("无需增量回补，数据已是最新");
+        }
+
+        long totalElapsed = System.currentTimeMillis() - totalStartTime;
+        log.info("========== V2 回补全部完成！总耗时: {}ms ({}分钟) ==========", 
+                totalElapsed, totalElapsed / 60000);
+    }
+
+    /**
+     * 执行单个阶段的并发回补
+     * 
+     * @param startTime 开始时间
+     * @param endTime 结束时间
+     * @param concurrency 并发数
+     * @param collectBasePrices 是否收集基准价格（首次运行时需要）
+     * @return 收集到的基准价格（每个币种最早的 openPrice）
+     */
+    private Map<String, Double> backfillPhaseV2(LocalDateTime startTime, LocalDateTime endTime, 
+            int concurrency, boolean collectBasePrices) {
+        
+        List<String> symbols = binanceApiService.getAllUsdtSymbols();
+        if (symbols.isEmpty()) {
+            log.warn("无法获取交易对列表");
+            return Collections.emptyMap();
+        }
+
+        long startMs = startTime.atZone(ZoneId.of("UTC")).toInstant().toEpochMilli();
+        long endMs = endTime.atZone(ZoneId.of("UTC")).toInstant().toEpochMilli();
+
+        // 批量查询已存在的时间戳（优化）
+        Set<LocalDateTime> existingTimestamps = new HashSet<>(
+                coinPriceRepository.findAllDistinctTimestampsBetween(startTime, endTime));
+        log.info("本阶段已存在 {} 个时间点将跳过", existingTimestamps.size());
+
+        Semaphore semaphore = new Semaphore(concurrency);
+        AtomicInteger completed = new AtomicInteger(0);
+        AtomicInteger failed = new AtomicInteger(0);
+        AtomicInteger skipped = new AtomicInteger(0);
+
+        // 用于收集新币的基准价格（线程安全）
+        Map<String, Double> collectedBasePrices = new java.util.concurrent.ConcurrentHashMap<>();
+
+        long phaseStartTime = System.currentTimeMillis();
+
+        List<CompletableFuture<Void>> futures = symbols.stream()
+                .map(symbol -> CompletableFuture.runAsync(() -> {
+                    try {
+                        semaphore.acquire();
+
+                        // 获取 K 线（limit=99，权重 1）
+                        List<KlineData> klines = binanceApiService.getKlinesWithPagination(
+                                symbol, "5m", startMs, endMs, 99);
+
+                        if (klines.isEmpty()) {
+                            skipped.incrementAndGet();
+                            return;
+                        }
+
+                        // 收集基准价格（使用最早的 openPrice）
+                        if (collectBasePrices && !klines.isEmpty()) {
+                            KlineData firstKline = klines.get(0);
+                            collectedBasePrices.putIfAbsent(symbol, firstKline.getOpenPrice());
+                        }
+
+                        // 过滤已存在的时间点，并构建 CoinPrice 列表
+                        List<CoinPrice> pricesToSave = new ArrayList<>();
+                        for (KlineData kline : klines) {
+                            LocalDateTime timestamp = kline.getTimestamp();
+                            // 跳过已存在的时间点
+                            if (existingTimestamps.contains(timestamp)) {
+                                continue;
+                            }
+                            if (kline.getClosePrice() > 0) {
+                                pricesToSave.add(new CoinPrice(
+                                        kline.getSymbol(), timestamp,
+                                        kline.getOpenPrice(), kline.getHighPrice(),
+                                        kline.getLowPrice(), kline.getClosePrice()));
+                            }
+                        }
+
+                        // 立即保存到数据库（这个操作的耗时就是自然间隔）
+                        if (!pricesToSave.isEmpty()) {
+                            jdbcCoinPriceRepository.batchInsert(pricesToSave);
+                        }
+
+                        int done = completed.incrementAndGet();
+                        if (done % 50 == 0 || done == symbols.size()) {
+                            long elapsed = System.currentTimeMillis() - phaseStartTime;
+                            log.info("回补进度: {}/{} (跳过:{}, 失败:{}) 耗时:{}s", 
+                                    done, symbols.size(), skipped.get(), failed.get(), elapsed / 1000);
+                        }
+
+                    } catch (Exception e) {
+                        int failCount = failed.incrementAndGet();
+                        log.error("回补失败 {}: {}", symbol, e.getMessage());
+
+                        // 连续失败多次时等待
+                        if (failCount % 10 == 0) {
+                            log.warn("连续失败 {} 次，等待5秒后继续...", failCount);
+                            try {
+                                Thread.sleep(5000);
+                            } catch (InterruptedException ie) {
+                                Thread.currentThread().interrupt();
+                            }
+                        }
+                    } finally {
+                        semaphore.release();
+                    }
+                }, executorService))
+                .collect(Collectors.toList());
+
+        // 等待所有任务完成
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        long phaseElapsed = System.currentTimeMillis() - phaseStartTime;
+        log.info("本阶段完成: 成功={}, 跳过={}, 失败={}, 耗时={}s",
+                completed.get(), skipped.get(), failed.get(), phaseElapsed / 1000);
+
+        return collectedBasePrices;
+    }
+
+    /**
+     * 计算并保存指定时间范围内的所有指数
+     * 
+     * @param startTime 开始时间
+     * @param endTime 结束时间
+     */
+    private void calculateAndSaveIndexesForRange(LocalDateTime startTime, LocalDateTime endTime) {
+        // 批量查询已存在的指数时间戳
+        Set<LocalDateTime> existingIndexTimestamps = new HashSet<>(
+                marketIndexRepository.findAllTimestampsBetween(startTime, endTime));
+
+        // 获取所有需要计算的时间点
+        List<LocalDateTime> timestamps = coinPriceRepository.findAllDistinctTimestampsBetween(startTime, endTime);
+        log.info("时间范围内有 {} 个时间点，已有指数 {} 个", timestamps.size(), existingIndexTimestamps.size());
+
+        List<MarketIndex> indexList = new ArrayList<>();
+
+        for (LocalDateTime timestamp : timestamps) {
+            // 跳过已存在的
+            if (existingIndexTimestamps.contains(timestamp)) {
+                continue;
+            }
+
+            // 获取该时间点的所有币种价格
+            List<CoinPrice> prices = coinPriceRepository.findByTimestamp(timestamp);
+
+            double totalChange = 0;
+            double totalVolume = 0;
+            int validCount = 0;
+            int upCount = 0;
+            int downCount = 0;
+
+            for (CoinPrice price : prices) {
+                String symbol = price.getSymbol();
+                Double basePrice = basePrices.get(symbol);
+
+                if (basePrice == null || basePrice <= 0) {
+                    continue;
+                }
+
+                double changePercent = (price.getPrice() - basePrice) / basePrice * 100;
+                // 注意：CoinPrice 没有 volume 字段，这里暂时不计算成交额
+                // 如果需要成交额，可以从原始 K 线获取
+
+                if (changePercent > 0) {
+                    upCount++;
+                } else if (changePercent < 0) {
+                    downCount++;
+                }
+
+                totalChange += changePercent;
+                validCount++;
+            }
+
+            if (validCount > 0) {
+                double indexValue = totalChange / validCount;
+                double adr = downCount > 0 ? (double) upCount / downCount : upCount;
+                indexList.add(new MarketIndex(timestamp, indexValue, totalVolume, validCount, upCount, downCount, adr));
+            }
+        }
+
+        // 批量保存
+        if (!indexList.isEmpty()) {
+            marketIndexRepository.saveAll(indexList);
+            log.info("指数计算完成，新增 {} 条记录", indexList.size());
+        } else {
+            log.info("无新指数需要保存");
+        }
     }
 }

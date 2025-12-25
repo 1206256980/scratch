@@ -19,6 +19,9 @@ public class DataCollectorScheduler {
     @Value("${index.backfill.days}")
     private int backfillDays;
 
+    @Value("${binance.api.backfill-concurrency:5}")
+    private int backfillConcurrency;
+
     private volatile boolean isBackfillComplete = false;
 
     public DataCollectorScheduler(IndexCalculatorService indexCalculatorService) {
@@ -26,11 +29,11 @@ public class DataCollectorScheduler {
     }
 
     /**
-     * 应用启动后执行历史数据回补
+     * 应用启动后执行历史数据回补（使用 V2 优化版）
      */
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        log.info("应用启动完成，开始回补历史数据...");
+        log.info("应用启动完成，开始 V2 优化版回补历史数据...");
 
         // 异步执行回补，不阻塞应用启动
         new Thread(() -> {
@@ -38,21 +41,20 @@ public class DataCollectorScheduler {
                 // 设置回补状态
                 indexCalculatorService.setBackfillInProgress(true);
 
-                indexCalculatorService.backfillHistoricalData(backfillDays);
+                // 使用 V2 优化版回补（两阶段并发）
+                indexCalculatorService.backfillHistoricalDataV2(backfillDays, backfillConcurrency);
 
-                // 回补完成后，先将暂存的数据保存到数据库
-                log.info("回补完成，开始刷新暂存数据...");
-                indexCalculatorService.flushPendingData();
+                // V2 版本不需要 flushPendingData，因为每阶段结束后已计算指数
 
                 // 清除回补状态
                 indexCalculatorService.setBackfillInProgress(false);
                 isBackfillComplete = true;
-                log.info("历史数据回补完成，暂存数据已刷新");
+                log.info("V2 历史数据回补完成");
             } catch (Exception e) {
                 log.error("历史数据回补失败: {}", e.getMessage(), e);
                 indexCalculatorService.setBackfillInProgress(false);
             }
-        }, "backfill-thread").start();
+        }, "backfill-v2-thread").start();
     }
 
     /**
