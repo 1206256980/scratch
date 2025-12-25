@@ -49,24 +49,25 @@ public class JdbcCoinPriceRepository {
             int end = Math.min(i + ROWS_PER_SQL, totalSize);
             List<CoinPrice> batch = prices.subList(i, end);
 
-            // 构建多值INSERT语句（包含OHLC字段）
+            // 构建多值INSERT语句（包含OHLCV字段）
             StringBuilder sql = new StringBuilder(
-                "INSERT INTO coin_price (symbol, timestamp, open_price, high_price, low_price, price) VALUES ");
-            Object[] params = new Object[batch.size() * 6];
+                "INSERT INTO coin_price (symbol, timestamp, open_price, high_price, low_price, price, volume) VALUES ");
+            Object[] params = new Object[batch.size() * 7];
             
             for (int j = 0; j < batch.size(); j++) {
                 if (j > 0) {
                     sql.append(",");
                 }
-                sql.append("(?,?,?,?,?,?)");
+                sql.append("(?,?,?,?,?,?,?)");
                 
                 CoinPrice price = batch.get(j);
-                params[j * 6] = price.getSymbol();
-                params[j * 6 + 1] = Timestamp.valueOf(price.getTimestamp());
-                params[j * 6 + 2] = price.getOpenPrice();
-                params[j * 6 + 3] = price.getHighPrice();
-                params[j * 6 + 4] = price.getLowPrice();
-                params[j * 6 + 5] = price.getPrice();
+                params[j * 7] = price.getSymbol();
+                params[j * 7 + 1] = Timestamp.valueOf(price.getTimestamp());
+                params[j * 7 + 2] = price.getOpenPrice();
+                params[j * 7 + 3] = price.getHighPrice();
+                params[j * 7 + 4] = price.getLowPrice();
+                params[j * 7 + 5] = price.getPrice();
+                params[j * 7 + 6] = price.getVolume();
             }
 
             jdbcTemplate.update(sql.toString(), params);

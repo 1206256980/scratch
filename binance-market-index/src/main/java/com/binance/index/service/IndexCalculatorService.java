@@ -930,12 +930,12 @@ public class IndexCalculatorService {
      * 
      * @param startTime 开始时间
      * @param endTime 结束时间
-     * @return 缺漏时间点统计
+     * @return 缺漏时间点统计（按币种）
      */
     public Map<String, Object> getMissingTimestamps(LocalDateTime startTime, LocalDateTime endTime) {
         Map<String, Object> result = new HashMap<>();
         
-        log.info("查询缺漏时间点: {} ~ {}", startTime, endTime);
+        log.info("查询各币种缺漏时间点: {} ~ {}", startTime, endTime);
         
         // 1. 生成应该存在的所有时间点
         List<LocalDateTime> expectedTimestamps = new ArrayList<>();
@@ -944,31 +944,53 @@ public class IndexCalculatorService {
             expectedTimestamps.add(checkTime);
             checkTime = checkTime.plusMinutes(5);
         }
+        int expectedPerCoin = expectedTimestamps.size();
         
-        // 2. 获取数据库中已存在的时间点
-        Set<LocalDateTime> existingTimestamps = new HashSet<>(
-                coinPriceRepository.findAllDistinctTimestampsBetween(startTime, endTime));
+        // 2. 获取所有活跃币种
+        List<String> activeSymbols = binanceApiService.getAllUsdtSymbols();
         
-        // 3. 找出缺漏的时间点
-        List<String> missingTimestamps = new ArrayList<>();
-        for (LocalDateTime ts : expectedTimestamps) {
-            if (!existingTimestamps.contains(ts)) {
-                missingTimestamps.add(ts.toString());
+        // 3. 检查每个币种的缺漏情况
+        List<Map<String, Object>> symbolsMissing = new ArrayList<>();
+        int totalMissing = 0;
+        int symbolsWithMissing = 0;
+        
+        for (String symbol : activeSymbols) {
+            // 获取该币种已有的时间戳
+            List<CoinPrice> prices = coinPriceRepository.findBySymbolInRangeOrderByTime(
+                    symbol, startTime, endTime);
+            Set<LocalDateTime> existingSet = prices.stream()
+                    .map(p -> p.getTimestamp().truncatedTo(java.time.temporal.ChronoUnit.MINUTES))
+                    .collect(Collectors.toSet());
+            
+            // 找出缺漏的时间点
+            List<String> missing = new ArrayList<>();
+            for (LocalDateTime ts : expectedTimestamps) {
+                if (!existingSet.contains(ts)) {
+                    missing.add(ts.toString());
+                }
+            }
+            
+            if (!missing.isEmpty()) {
+                Map<String, Object> symbolInfo = new HashMap<>();
+                symbolInfo.put("symbol", symbol);
+                symbolInfo.put("existing", existingSet.size());
+                symbolInfo.put("missing", missing.size());
+                symbolInfo.put("missingTimestamps", missing.size() <= 10 ? missing : missing.subList(0, 10)); // 最多显示10个
+                symbolsMissing.add(symbolInfo);
+                totalMissing += missing.size();
+                symbolsWithMissing++;
             }
         }
         
         // 4. 返回结果
-        result.put("expectedCount", expectedTimestamps.size());
-        result.put("existingCount", existingTimestamps.size());
-        result.put("missingCount", missingTimestamps.size());
-        result.put("missingTimestamps", missingTimestamps);
-        result.put("completenessPercent", 
-                expectedTimestamps.isEmpty() ? 100.0 : 
-                Math.round((double) existingTimestamps.size() / expectedTimestamps.size() * 10000) / 100.0);
+        result.put("totalSymbols", activeSymbols.size());
+        result.put("expectedPerCoin", expectedPerCoin);
+        result.put("symbolsWithMissing", symbolsWithMissing);
+        result.put("totalMissingRecords", totalMissing);
+        result.put("details", symbolsMissing.size() <= 50 ? symbolsMissing : symbolsMissing.subList(0, 50)); // 最多显示50个币种
         
-        log.info("查询完成: 应有{}个时间点, 实际{}个, 缺漏{}个, 完整度{}%", 
-                expectedTimestamps.size(), existingTimestamps.size(), missingTimestamps.size(),
-                result.get("completenessPercent"));
+        log.info("查询完成: {}个币种, {}个有缺漏, 共缺{}条记录", 
+                activeSymbols.size(), symbolsWithMissing, totalMissing);
         
         return result;
     }
@@ -2275,7 +2297,8 @@ public class IndexCalculatorService {
                                     pricesToSave.add(new CoinPrice(
                                             kline.getSymbol(), timestamp,
                                             kline.getOpenPrice(), kline.getHighPrice(),
-                                            kline.getLowPrice(), kline.getClosePrice()));
+                                            kline.getLowPrice(), kline.getClosePrice(),
+                                            kline.getQuoteVolume()));  // 成交额
                                 }
                             }
                             
@@ -2382,8 +2405,11 @@ public class IndexCalculatorService {
                 }
 
                 double changePercent = (price.getPrice() - basePrice) / basePrice * 100;
-                // 注意：CoinPrice 没有 volume 字段，这里暂时不计算成交额
-                // 如果需要成交额，可以从原始 K 线获取
+                
+                // 累加成交额
+                if (price.getVolume() != null) {
+                    totalVolume += price.getVolume();
+                }
 
                 if (changePercent > 0) {
                     upCount++;

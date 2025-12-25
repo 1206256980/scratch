@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 /**
  * 币种价格历史记录
- * 用于存储每个币种在每个时间点的OHLC价格，支持快速计算涨幅分布
+ * 用于存储每个币种在每个时间点的OHLC价格和成交额，支持快速计算涨幅分布
  */
 @Entity
 @Table(name = "coin_price", indexes = {
@@ -38,6 +38,9 @@ public class CoinPrice {
     @Column(nullable = false)
     private Double price;  // 收盘价（保持向后兼容）
 
+    @Column
+    private Double volume;  // 成交额（USDT）
+
     public CoinPrice() {}
 
     // 兼容旧代码的构造函数
@@ -47,7 +50,7 @@ public class CoinPrice {
         this.price = price;
     }
 
-    // 完整OHLC构造函数
+    // OHLC构造函数（兼容旧代码，无 volume）
     public CoinPrice(String symbol, LocalDateTime timestamp, Double openPrice, 
                      Double highPrice, Double lowPrice, Double closePrice) {
         this.symbol = symbol;
@@ -56,6 +59,18 @@ public class CoinPrice {
         this.highPrice = highPrice;
         this.lowPrice = lowPrice;
         this.price = closePrice;
+    }
+
+    // 完整OHLCV构造函数（包含成交额）
+    public CoinPrice(String symbol, LocalDateTime timestamp, Double openPrice, 
+                     Double highPrice, Double lowPrice, Double closePrice, Double volume) {
+        this.symbol = symbol;
+        this.timestamp = timestamp;
+        this.openPrice = openPrice;
+        this.highPrice = highPrice;
+        this.lowPrice = lowPrice;
+        this.price = closePrice;
+        this.volume = volume;
     }
 
     public Long getId() {
@@ -113,5 +128,12 @@ public class CoinPrice {
     public void setPrice(Double price) {
         this.price = price;
     }
-}
 
+    public Double getVolume() {
+        return volume;
+    }
+
+    public void setVolume(Double volume) {
+        this.volume = volume;
+    }
+}
