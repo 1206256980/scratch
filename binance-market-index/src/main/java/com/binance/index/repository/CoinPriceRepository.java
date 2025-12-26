@@ -153,4 +153,13 @@ public interface CoinPriceRepository extends JpaRepository<CoinPrice, Long> {
          * 统计指定币种的记录数（用于日志输出删除了多少条）
          */
         long countBySymbol(String symbol);
+
+        /**
+         * 一次性查询时间范围内所有币种的时间戳（用于修复接口优化）
+         * 返回 [symbol, timestamp] 的列表，可按币种分组
+         */
+        @Query("SELECT cp.symbol, cp.timestamp FROM CoinPrice cp " +
+                        "WHERE cp.timestamp >= :startTime AND cp.timestamp <= :endTime")
+        List<Object[]> findSymbolTimestampsInRange(@Param("startTime") LocalDateTime startTime,
+                        @Param("endTime") LocalDateTime endTime);
 }
