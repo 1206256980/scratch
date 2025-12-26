@@ -1066,7 +1066,7 @@ function UptrendModule() {
                     </button>
 
                     {/* 搜索框 */}
-                    <div className="header-search" style={{ marginLeft: '16px' }}>
+                    <div className="header-search" style={{ marginLeft: '16px', position: 'relative' }}>
                         <input
                             type="text"
                             className="header-search-input"
@@ -1074,23 +1074,49 @@ function UptrendModule() {
                             value={searchSymbol}
                             onChange={(e) => setSearchSymbol(e.target.value)}
                             onKeyDown={handleSearchKeyDown}
+                            style={{ paddingRight: searchSymbol ? '52px' : '32px' }}
                         />
-                        <button
-                            className="header-search-btn"
-                            onClick={handleSearchSymbol}
-                            title="搜索"
-                        >
-                            🔍
-                        </button>
                         {searchSymbol && (
                             <button
                                 className="header-search-clear"
                                 onClick={() => setSearchSymbol('')}
                                 title="清除"
+                                style={{
+                                    position: 'absolute',
+                                    right: '28px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: '#94a3b8',
+                                    fontSize: '12px',
+                                    padding: '2px 4px',
+                                    lineHeight: 1
+                                }}
                             >
                                 ✕
                             </button>
                         )}
+                        <button
+                            className="header-search-btn"
+                            onClick={handleSearchSymbol}
+                            title="搜索"
+                            style={{
+                                position: 'absolute',
+                                right: '4px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#94a3b8',
+                                fontSize: '14px',
+                                padding: '2px 4px'
+                            }}
+                        >
+                            🔍
+                        </button>
                     </div>
                 </div>
             </div>
