@@ -725,8 +725,22 @@ function UptrendModule() {
         }
 
         // 对齐起始时间
-        const alignedMin = Math.floor(minTime / bucketSizeMs) * bucketSizeMs
-        const alignedMax = Math.ceil(maxTime / bucketSizeMs) * bucketSizeMs
+        let alignedMin, alignedMax
+        if (bucketSizeMs >= 24 * 60 * 60 * 1000) {
+            // 1天或更大粒度：按自然日对齐到00:00
+            const minDate = new Date(minTime)
+            minDate.setHours(0, 0, 0, 0)
+            alignedMin = minDate.getTime()
+
+            const maxDate = new Date(maxTime)
+            maxDate.setHours(0, 0, 0, 0)
+            maxDate.setDate(maxDate.getDate() + 1) // 下一天的00:00
+            alignedMax = maxDate.getTime()
+        } else {
+            // 其他粒度：按时间戳对齐
+            alignedMin = Math.floor(minTime / bucketSizeMs) * bucketSizeMs
+            alignedMax = Math.ceil(maxTime / bucketSizeMs) * bucketSizeMs
+        }
 
         // 创建时间桶
         const buckets = []
@@ -740,7 +754,10 @@ function UptrendModule() {
             const date = new Date(bucketStart)
             const pad = (n) => String(n).padStart(2, '0')
             let label
-            if (bucketSizeMs >= 12 * 60 * 60 * 1000) {
+            if (bucketSizeMs >= 24 * 60 * 60 * 1000) {
+                // 1天或更大粒度：只显示日期
+                label = `${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+            } else if (bucketSizeMs >= 12 * 60 * 60 * 1000) {
                 label = `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:00`
             } else {
                 label = `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
