@@ -5,6 +5,8 @@ import com.binance.index.dto.IndexDataPoint;
 import com.binance.index.dto.UptrendData;
 import com.binance.index.entity.MarketIndex;
 import com.binance.index.service.IndexCalculatorService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +20,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/index")
 public class IndexController {
 
+    private static final Logger log = LoggerFactory.getLogger(IndexController.class);
     private final IndexCalculatorService indexCalculatorService;
 
     public IndexController(IndexCalculatorService indexCalculatorService) {
@@ -29,6 +32,7 @@ public class IndexController {
      */
     @GetMapping("/current")
     public ResponseEntity<Map<String, Object>> getCurrentIndex() {
+        log.info("------------------------- 开始调用 /current 接口 -------------------------");
         MarketIndex latest = indexCalculatorService.getLatestIndex();
 
         Map<String, Object> response = new HashMap<>();
@@ -51,7 +55,7 @@ public class IndexController {
     @GetMapping("/history")
     public ResponseEntity<Map<String, Object>> getHistoryData(
             @RequestParam(defaultValue = "168") int hours) {
-
+        log.info("------------------------- 开始调用 /history 接口 -------------------------");
         List<MarketIndex> historyData = indexCalculatorService.getHistoryData(hours);
 
         Map<String, Object> response = new HashMap<>();
@@ -69,6 +73,7 @@ public class IndexController {
      */
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
+        log.info("------------------------- 开始调用 /stats 接口 -------------------------");
         MarketIndex latest = indexCalculatorService.getLatestIndex();
         List<MarketIndex> last24h = indexCalculatorService.getHistoryData(24);
         List<MarketIndex> last72h = indexCalculatorService.getHistoryData(72);
@@ -178,7 +183,7 @@ public class IndexController {
             @RequestParam(required = false) String start,
             @RequestParam(required = false) String end,
             @RequestParam(defaultValue = "Asia/Shanghai") String timezone) {
-
+        log.info("------------------------- 开始调用 /distribution 接口 -------------------------");
         Map<String, Object> response = new HashMap<>();
 
         // 如果提供了 start 和 end，使用绝对时间模式
@@ -270,7 +275,7 @@ public class IndexController {
             @RequestParam(required = false) String start,
             @RequestParam(required = false) String end,
             @RequestParam(defaultValue = "Asia/Shanghai") String timezone) {
-
+        log.info("------------------------- 开始调用 /uptrend-distribution 接口 -------------------------");
         Map<String, Object> response = new HashMap<>();
 
         // 如果提供了 start 和 end，使用绝对时间模式
@@ -349,7 +354,7 @@ public class IndexController {
     public ResponseEntity<Map<String, Object>> debugPrices(
             @RequestParam String symbol,
             @RequestParam(defaultValue = "1") double hours) {
-
+        log.info("------------------------- 开始调用 /debug/prices 接口 -------------------------");
         java.time.LocalDateTime startTime = java.time.LocalDateTime.now().minusMinutes((long) (hours * 60));
         List<com.binance.index.entity.CoinPrice> prices = indexCalculatorService.getCoinPriceHistory(symbol, startTime);
 
@@ -380,6 +385,7 @@ public class IndexController {
      */
     @GetMapping("/debug/basePrices")
     public ResponseEntity<Map<String, Object>> debugBasePrices() {
+        log.info("------------------------- 开始调用 /debug/basePrices 接口 -------------------------");
         List<com.binance.index.entity.BasePrice> basePrices = indexCalculatorService.getAllBasePrices();
 
         Map<String, Object> response = new HashMap<>();
@@ -407,6 +413,7 @@ public class IndexController {
      */
     @GetMapping("/debug/verify")
     public ResponseEntity<Map<String, Object>> debugVerifyIndex() {
+        log.info("------------------------- 开始调用 /debug/verify 接口 -------------------------");
         Map<String, Object> response = indexCalculatorService.verifyIndexCalculation();
         return ResponseEntity.ok(response);
     }
@@ -423,7 +430,7 @@ public class IndexController {
             @RequestParam String start,
             @RequestParam String end,
             @RequestParam(defaultValue = "Asia/Shanghai") String timezone) {
-
+        log.info("------------------------- 开始调用 DELETE /data 接口 -------------------------");
         Map<String, Object> response = new HashMap<>();
 
         try {
@@ -478,6 +485,7 @@ public class IndexController {
      */
     @DeleteMapping("/symbol/{symbol}")
     public ResponseEntity<Map<String, Object>> deleteSymbolData(@PathVariable String symbol) {
+        log.info("------------------------- 开始调用 DELETE /symbol/{} 接口 -------------------------", symbol);
         Map<String, Object> response = new HashMap<>();
 
         if (symbol == null || symbol.isEmpty()) {
@@ -518,7 +526,7 @@ public class IndexController {
             @RequestParam(required = false) String start,
             @RequestParam(required = false) String end,
             @RequestParam(defaultValue = "Asia/Shanghai") String timezone) {
-        
+        log.info("------------------------- 开始调用 /missing 接口 -------------------------");
         Map<String, Object> response = new HashMap<>();
         
         try {
@@ -578,7 +586,7 @@ public class IndexController {
             @RequestParam(defaultValue = "7") int days,
             @RequestParam(required = false) String start,
             @RequestParam(required = false) String end) {
-        
+        log.info("------------------------- 开始调用 POST /repair 接口 -------------------------");
         Map<String, Object> response = new HashMap<>();
 
         // 验证 days 参数（仅当未指定 start 时使用）

@@ -81,6 +81,7 @@ public class DataCollectorScheduler {
         }
 
         try {
+            log.info("------------------------- 开始实时采集 -------------------------");
             indexCalculatorService.calculateAndSaveCurrentIndex();
         } catch (Exception e) {
             log.error("数据采集失败: {}", e.getMessage(), e);
