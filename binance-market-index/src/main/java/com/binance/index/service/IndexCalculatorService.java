@@ -937,10 +937,16 @@ public class IndexCalculatorService {
 
         log.info("查询各币种缺漏时间点: {} ~ {}", startTime, endTime);
 
+        // 确保只检查已闭合的K线（当前对齐时间 - 5分钟）
+        LocalDateTime latestClosedKline = alignToFiveMinutes(LocalDateTime.now(java.time.ZoneOffset.UTC)).minusMinutes(5);
+        LocalDateTime actualEndTime = endTime.isAfter(latestClosedKline) ? latestClosedKline : endTime;
+        
+        log.info("实际检查范围: {} ~ {} (最新闭合K线: {})", startTime, actualEndTime, latestClosedKline);
+
         // 1. 生成应该存在的所有时间点
         List<LocalDateTime> expectedTimestamps = new ArrayList<>();
         LocalDateTime checkTime = alignToFiveMinutes(startTime);
-        while (!checkTime.isAfter(endTime)) {
+        while (!checkTime.isAfter(actualEndTime)) {
             expectedTimestamps.add(checkTime);
             checkTime = checkTime.plusMinutes(5);
         }
