@@ -1997,7 +1997,8 @@ public class IndexCalculatorService {
 
             boolean isDifferentCandle = !waveStartTime.equals(wavePeakTime);
             // 最后波段：检查是否还处于"有效上涨"状态
-            boolean stillValid = candlesSinceNewHigh < noNewHighCandles;
+            // noNewHighCandles == -1 表示禁用横盘检测，始终视为进行中
+            boolean stillValid = noNewHighCandles == -1 || candlesSinceNewHigh < noNewHighCandles;
 
             if (uptrendPercent >= minUptrend && isDifferentCandle) {
                 waves.add(new UptrendData.CoinUptrend(
