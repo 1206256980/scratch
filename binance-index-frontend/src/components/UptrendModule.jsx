@@ -985,177 +985,179 @@ function UptrendModule() {
 
     return (
         <div className="distribution-module uptrend-module">
-            {/* 标题和控制栏 */}
-            <div className="distribution-header">
+            {/* 标题 */}
+            <div className="distribution-header" style={{ marginBottom: '8px' }}>
                 <div className="distribution-title">🚀 单边上行涨幅分布 <span style={{ fontSize: '12px', color: '#94a3b8' }}>（马丁做空参考）</span></div>
-                <div className="time-base-selector">
-                    <label style={{ display: 'flex', alignItems: 'center', marginRight: '8px' }}>
+            </div>
+
+            {/* 控制栏 - 单独一行 */}
+            <div className="time-base-selector" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px', gap: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', marginRight: '8px' }}>
+                    <input
+                        type="checkbox"
+                        checked={useCustomTime}
+                        onChange={(e) => setUseCustomTime(e.target.checked)}
+                        style={{ marginRight: '4px' }}
+                    />
+                    <span className="label">自定义时间</span>
+                </label>
+
+                {useCustomTime ? (
+                    <>
                         <input
-                            type="checkbox"
-                            checked={useCustomTime}
-                            onChange={(e) => setUseCustomTime(e.target.checked)}
-                            style={{ marginRight: '4px' }}
+                            type="datetime-local"
+                            className="time-input"
+                            value={startTime}
+                            onChange={(e) => setStartTime(e.target.value)}
+                            style={{ width: '180px', marginRight: '4px' }}
                         />
-                        <span className="label">自定义时间</span>
-                    </label>
-
-                    {useCustomTime ? (
-                        <>
-                            <input
-                                type="datetime-local"
-                                className="time-input"
-                                value={startTime}
-                                onChange={(e) => setStartTime(e.target.value)}
-                                style={{ width: '180px', marginRight: '4px' }}
-                            />
-                            <span style={{ color: '#94a3b8' }}>至</span>
-                            <input
-                                type="datetime-local"
-                                className="time-input"
-                                value={endTime}
-                                onChange={(e) => setEndTime(e.target.value)}
-                                style={{ width: '180px', marginLeft: '4px' }}
-                            />
-                        </>
-                    ) : (
-                        <>
-                            <span className="label">时间范围:</span>
-                            <select
-                                className="time-select"
-                                value={timeBase}
-                                onChange={(e) => setTimeBase(Number(e.target.value))}
-                            >
-                                {TIME_OPTIONS.map(opt => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </>
-                    )}
-
-                    <span className="label" style={{ marginLeft: '12px' }}>保留:</span>
-                    <input
-                        type="text"
-                        className="threshold-input"
-                        value={inputKeepRatio}
-                        onChange={handleKeepRatioChange}
-                        onBlur={applyKeepRatio}
-                        onKeyDown={handleKeepRatioKeyDown}
-                        style={{ width: '50px', textAlign: 'center' }}
-                        title="位置比率低于此值视为波段结束"
-                    />
-                    <span style={{ color: '#94a3b8', marginLeft: '2px' }}>%</span>
-
-                    <span className="label" style={{ marginLeft: '8px' }}>横盘:</span>
-                    <input
-                        type="text"
-                        className="threshold-input"
-                        value={inputNoNewHighCandles}
-                        onChange={handleNoNewHighCandlesChange}
-                        onBlur={applyNoNewHighCandles}
-                        onKeyDown={handleNoNewHighCandlesKeyDown}
-                        style={{ width: '45px', textAlign: 'center' }}
-                        title="连续N根K线未创新高视为横盘结束"
-                    />
-                    <span style={{ color: '#94a3b8', marginLeft: '2px' }}>根</span>
-
-                    <span className="label" style={{ marginLeft: '8px' }}>最小:</span>
-                    <input
-                        type="text"
-                        className="threshold-input"
-                        value={inputMinUptrend}
-                        onChange={handleMinUptrendChange}
-                        onBlur={applyMinUptrend}
-                        onKeyDown={handleMinUptrendKeyDown}
-                        style={{ width: '45px', textAlign: 'center' }}
-                        title="最小涨幅过滤"
-                    />
-                    <span style={{ color: '#94a3b8', marginLeft: '2px' }}>%</span>
-
-                    <span className="label" style={{ marginLeft: '12px' }}>价格:</span>
-                    <select
-                        className="time-select"
-                        value={priceMode}
-                        onChange={(e) => setPriceMode(e.target.value)}
-                        title="波段起点/顶点使用的价格类型"
-                        style={{ marginLeft: '4px' }}
-                    >
-                        <option value="lowHigh">低/高价</option>
-                        <option value="openClose">开/收价</option>
-                    </select>
-
-                    <button
-                        className="refresh-btn"
-                        onClick={fetchData}
-                        disabled={loading}
-                        title="刷新数据"
-                        style={{ marginLeft: '12px' }}
-                    >
-                        {loading ? '⏳' : '🔄'}
-                    </button>
-                    <button
-                        className="reset-btn"
-                        onClick={resetToDefaults}
-                        title="重置为默认设置"
-                        style={{ marginLeft: '4px' }}
-                    >
-                        ↺
-                    </button>
-
-                    {/* 搜索框 */}
-                    <div className="header-search" style={{ marginLeft: '16px', position: 'relative' }}>
+                        <span style={{ color: '#94a3b8' }}>至</span>
                         <input
-                            type="text"
-                            className="header-search-input"
-                            placeholder="搜索币种..."
-                            value={searchSymbol}
-                            onChange={(e) => setSearchSymbol(e.target.value)}
-                            onKeyDown={handleSearchKeyDown}
-                            style={{ paddingRight: searchSymbol ? '52px' : '32px' }}
+                            type="datetime-local"
+                            className="time-input"
+                            value={endTime}
+                            onChange={(e) => setEndTime(e.target.value)}
+                            style={{ width: '180px', marginLeft: '4px' }}
                         />
-                        {searchSymbol && (
-                            <button
-                                className="header-search-clear"
-                                onClick={() => setSearchSymbol('')}
-                                title="清除"
-                                style={{
-                                    position: 'absolute',
-                                    right: '28px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    color: '#94a3b8',
-                                    fontSize: '12px',
-                                    padding: '2px 4px',
-                                    lineHeight: 1
-                                }}
-                            >
-                                ✕
-                            </button>
-                        )}
+                    </>
+                ) : (
+                    <>
+                        <span className="label">时间范围:</span>
+                        <select
+                            className="time-select"
+                            value={timeBase}
+                            onChange={(e) => setTimeBase(Number(e.target.value))}
+                        >
+                            {TIME_OPTIONS.map(opt => (
+                                <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                </option>
+                            ))}
+                        </select>
+                    </>
+                )}
+
+                <span className="label" style={{ marginLeft: '12px' }}>保留:</span>
+                <input
+                    type="text"
+                    className="threshold-input"
+                    value={inputKeepRatio}
+                    onChange={handleKeepRatioChange}
+                    onBlur={applyKeepRatio}
+                    onKeyDown={handleKeepRatioKeyDown}
+                    style={{ width: '50px', textAlign: 'center' }}
+                    title="位置比率低于此值视为波段结束"
+                />
+                <span style={{ color: '#94a3b8', marginLeft: '2px' }}>%</span>
+
+                <span className="label" style={{ marginLeft: '8px' }}>横盘:</span>
+                <input
+                    type="text"
+                    className="threshold-input"
+                    value={inputNoNewHighCandles}
+                    onChange={handleNoNewHighCandlesChange}
+                    onBlur={applyNoNewHighCandles}
+                    onKeyDown={handleNoNewHighCandlesKeyDown}
+                    style={{ width: '45px', textAlign: 'center' }}
+                    title="连续N根K线未创新高视为横盘结束"
+                />
+                <span style={{ color: '#94a3b8', marginLeft: '2px' }}>根</span>
+
+                <span className="label" style={{ marginLeft: '8px' }}>最小:</span>
+                <input
+                    type="text"
+                    className="threshold-input"
+                    value={inputMinUptrend}
+                    onChange={handleMinUptrendChange}
+                    onBlur={applyMinUptrend}
+                    onKeyDown={handleMinUptrendKeyDown}
+                    style={{ width: '45px', textAlign: 'center' }}
+                    title="最小涨幅过滤"
+                />
+                <span style={{ color: '#94a3b8', marginLeft: '2px' }}>%</span>
+
+                <span className="label" style={{ marginLeft: '12px' }}>价格:</span>
+                <select
+                    className="time-select"
+                    value={priceMode}
+                    onChange={(e) => setPriceMode(e.target.value)}
+                    title="波段起点/顶点使用的价格类型"
+                    style={{ marginLeft: '4px' }}
+                >
+                    <option value="lowHigh">低/高价</option>
+                    <option value="openClose">开/收价</option>
+                </select>
+
+                <button
+                    className="refresh-btn"
+                    onClick={fetchData}
+                    disabled={loading}
+                    title="刷新数据"
+                    style={{ marginLeft: '12px' }}
+                >
+                    {loading ? '⏳' : '🔄'}
+                </button>
+                <button
+                    className="refresh-btn"
+                    onClick={resetToDefaults}
+                    title="重置为默认设置"
+                    style={{ marginLeft: '4px' }}
+                >
+                    ↺
+                </button>
+
+                {/* 搜索框 - 加宽 */}
+                <div className="header-search" style={{ marginLeft: 'auto', position: 'relative' }}>
+                    <input
+                        type="text"
+                        className="header-search-input"
+                        placeholder="搜索币种..."
+                        value={searchSymbol}
+                        onChange={(e) => setSearchSymbol(e.target.value)}
+                        onKeyDown={handleSearchKeyDown}
+                        style={{ paddingRight: searchSymbol ? '52px' : '32px', width: '180px' }}
+                    />
+                    {searchSymbol && (
                         <button
-                            className="header-search-btn"
-                            onClick={handleSearchSymbol}
-                            title="搜索"
+                            className="header-search-clear"
+                            onClick={() => setSearchSymbol('')}
+                            title="清除"
                             style={{
                                 position: 'absolute',
-                                right: '4px',
+                                right: '28px',
                                 top: '50%',
                                 transform: 'translateY(-50%)',
                                 background: 'none',
                                 border: 'none',
                                 cursor: 'pointer',
                                 color: '#94a3b8',
-                                fontSize: '14px',
-                                padding: '2px 4px'
+                                fontSize: '12px',
+                                padding: '2px 4px',
+                                lineHeight: 1
                             }}
                         >
-                            🔍
+                            ✕
                         </button>
-                    </div>
+                    )}
+                    <button
+                        className="header-search-btn"
+                        onClick={handleSearchSymbol}
+                        title="搜索"
+                        style={{
+                            position: 'absolute',
+                            right: '4px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#94a3b8',
+                            fontSize: '14px',
+                            padding: '2px 4px'
+                        }}
+                    >
+                        🔍
+                    </button>
                 </div>
             </div>
 
