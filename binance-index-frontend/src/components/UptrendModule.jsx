@@ -597,6 +597,11 @@ function UptrendModule() {
                 return sortOrder === 'desc'
                     ? b.waveStartTime - a.waveStartTime
                     : a.waveStartTime - b.waveStartTime
+            } else if (sortBy === 'endTime') {
+                // 按波段结束/顶点时间排序
+                return sortOrder === 'desc'
+                    ? (b.waveEndTime || 0) - (a.waveEndTime || 0)
+                    : (a.waveEndTime || 0) - (b.waveEndTime || 0)
             } else if (sortBy === 'duration') {
                 // 按波段持续时间排序
                 const aDuration = (a.waveEndTime || 0) - (a.waveStartTime || 0)
@@ -1404,7 +1409,14 @@ function UptrendModule() {
                                         onClick={() => setSortBy('startTime')}
                                         title="按波段开始时间排序"
                                     >
-                                        🕐时间
+                                        🕐开始
+                                    </button>
+                                    <button
+                                        className={`sort-type-btn ${sortBy === 'endTime' ? 'active' : ''}`}
+                                        onClick={() => setSortBy('endTime')}
+                                        title="按波段结束/顶点时间排序"
+                                    >
+                                        🕑结束
                                     </button>
                                     <button
                                         className={`sort-type-btn ${sortBy === 'duration' ? 'active' : ''}`}
