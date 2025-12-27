@@ -288,7 +288,8 @@ function UptrendModule() {
 
     const applyNoNewHighCandles = () => {
         const val = parseInt(inputNoNewHighCandles)
-        if (!isNaN(val) && val >= 1 && val <= 100) {
+        // 允许 -1 (禁用横盘检测) 或 1-100
+        if (!isNaN(val) && (val === -1 || (val >= 1 && val <= 100))) {
             setNoNewHighCandles(val)
         } else {
             setInputNoNewHighCandles(String(noNewHighCandles))
